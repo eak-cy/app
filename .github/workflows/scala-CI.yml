@@ -20,7 +20,11 @@ jobs:
       with:
         distribution: temurin
         java-version: 17
-        cache: sbt
+
+    - name: Set up sbt
+      uses: coursier/setup-action@v1
+      with:
+        apps: sbt
 
     - name: Build and Test
       run: sbt -v +test
