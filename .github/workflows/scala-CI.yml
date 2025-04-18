@@ -9,16 +9,58 @@ on:
 jobs:
   pr-build:
     runs-on: ubuntu-latest
-#    container:
-#      image: sbtscala/scala-sbt:eclipse-temurin-21.0.6_7_1.10.11_3.6.4
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    - name: Install asdf & tools
-      uses: asdf-vm/actions/install@v4
-    - name: Set up sbt
-      uses: coursier/setup-action@v1
-      with:
-        apps: sbt
-    - name: Build and Test
-      run: sbt -v +test
+      - name: Checkout code
+        uses: actions/checkout@v4
+        # Optional: If your build relies on git history (e.g., sbt-dynver), uncomment:
+        # fetch-depth: 0
+
+      # Step 1: Set up ASDF itself and install tools from .tool-versions
+      # This assumes you have a .tool-versions file in your repository root
+      # Example .tool-versions:
+      # java adoptopenjdk-11.0.11+9
+      # scala 2.13.8
+      # sbt 1.6.2
+      - name: Set up ASDF tools (Java, etc.)
+        uses: asdf-vm/actions/setup@v3 # Use the 'setup' action, v3 is current stable
+        # This action usually reads .tool-versions and runs 'asdf install' automatically
+
+      # Optional but Recommended: Cache ASDF installs
+      - name: Cache ASDF installs
+        uses: actions/cache@v4
+        with:
+          path: ~/.asdf/installs
+          key: ${{ runner.os }}-asdf-${{ hashFiles('**/.tool-versions') }}
+          restore-keys: |
+            ${{ runner.os }}-asdf-
+
+      # Optional but Recommended: Cache sbt/Coursier dependencies
+      - name: Cache sbt and Coursier dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier/v1
+            # Add platform-specific paths if you run on Windows/macOS too
+            # ~/AppData/Local/Coursier/Cache/v1 # Windows
+            # ~/Library/Caches/Coursier/v1      # macOS
+          # Key changes when relevant files change, ensuring cache invalidation
+          key: ${{ runner.os }}-sbt-coursier-${{ hashFiles('**/build.sbt', '**/*.scala', '**/project/build.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-coursier-
+
+      # Step 2: Set up sbt (if not managed by asdf in .tool-versions)
+      # If your .tool-versions handles sbt, you might not need this coursier step.
+      # However, it's generally reliable and doesn't hurt.
+      # It will use the Java installed by asdf.
+      - name: Set up sbt
+        uses: coursier/setup-action@v1
+        with:
+          apps: sbt # Just install sbt launcher, use existing Java
+
+      # Step 3: Build and Test
+      - name: Build and Test
+        # -v for verbose output
+        # +test runs 'test' for all defined Scala cross-versions (if any)
+        run: sbt -v +test
