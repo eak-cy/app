@@ -1,4 +1,3 @@
-
 name: Scala CI
 
 on:
@@ -10,21 +9,31 @@ on:
 jobs:
   pr-build:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up JDK
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: 17
-
-    - name: Set up sbt
-      uses: coursier/setup-action@v1
-      with:
-        apps: sbt
-
-    - name: Build and Test
-      run: sbt -v +test
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up ASDF tools (Java, etc.)
+        uses: asdf-vm/actions/setup@v3
+      - name: Cache ASDF installs
+        uses: actions/cache@v4
+        with:
+          path: ~/.asdf/installs
+          key: ${{ runner.os }}-asdf-${{ hashFiles('**/.tool-versions') }}
+          restore-keys: |
+            ${{ runner.os }}-asdf-
+      - name: Cache sbt and Coursier dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.sbt
+            ~/.ivy2/cache
+            ~/.cache/coursier/v1
+          key: ${{ runner.os }}-sbt-coursier-${{ hashFiles('**/build.sbt', '**/*.scala', '**/project/build.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-coursier-
+      - name: Set up sbt
+        uses: coursier/setup-action@v1
+        with:
+          apps: sbt
+      - name: Build and Test
+        run: sbt -v +test

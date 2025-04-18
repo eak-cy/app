@@ -5,6 +5,9 @@ ThisBuild / version := "local"
 ThisBuild / organization := "io.farmer.app"
 ThisBuild / organizationName := "Farmers App"
 
+ThisBuild / scalafixOnCompile := !sys.env.getOrElse("DISABLE_SCALA_LINT_ON_COMPILE", "false").toBoolean
+ThisBuild / scalafmtOnCompile := !sys.env.getOrElse("DISABLE_SCALA_LINT_ON_COMPILE", "false").toBoolean
+
 lazy val root = Project("app", file("."))
   .aggregate(backendModule)
 
