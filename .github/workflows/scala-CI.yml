@@ -1,4 +1,3 @@
-
 name: Scala CI
 
 on:
@@ -10,18 +9,10 @@ on:
 jobs:
   pr-build:
     runs-on: ubuntu-latest
-
+    container:
+      image: sbtscala/scala-sbt:eclipse-temurin-21.0.6_7_1.10.11_3.6.4
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Install asdf & tools
-      uses: asdf-vm/actions/install@v4
-
-    - name: Set up sbt
-      uses: coursier/setup-action@v1
-      with:
-        apps: sbt
-
-    - name: Build and Test
-      run: sbt -v +test
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Build and Test
+        run: sbt -v +test
