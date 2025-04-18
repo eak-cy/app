@@ -15,11 +15,8 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Set up JDK
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: 17
+    - name: Install asdf & tools
+      uses: asdf-vm/actions/install@v4
 
     - name: Set up sbt
       uses: coursier/setup-action@v1
