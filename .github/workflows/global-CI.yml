@@ -1,0 +1,21 @@
+# .github/workflows/global-ci.yml
+name: Global CI
+
+on:
+  pull_request:
+    paths-ignore:
+      - 'backend-domain/**'
+      - 'backend-gateway/**'
+  push:
+    paths-ignore:
+      - 'backend-domain/**'
+      - 'backend-gateway/**'
+
+jobs:
+  global:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Run common checks
+        run: echo "Run formatting, tests, etc. for global changes"
