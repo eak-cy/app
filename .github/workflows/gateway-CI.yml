@@ -1,0 +1,15 @@
+name: Gateway CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/gateway/**'
+  push:
+    paths:
+      - 'backend/gateway/**'
+
+jobs:
+  gateway:
+    uses: ./.github/workflows/module-build.yml
+    with:
+      module: backend-gateway

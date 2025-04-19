@@ -1,0 +1,15 @@
+name: Domain CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/domain/**'
+  push:
+    paths:
+      - 'backend/domain/**'
+
+jobs:
+  domain:
+    uses: ./.github/workflows/module-build.yml
+    with:
+      module: backend-domain
