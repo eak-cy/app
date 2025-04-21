@@ -1,6 +1,10 @@
 name: shared-scala-ci
 on:
   workflow_call:
+    inputs:
+      module:
+        required: true
+        type: string
 jobs:
   build:
     name: Build & Test ${{ inputs.module }}
