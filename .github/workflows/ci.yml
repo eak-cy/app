@@ -2,19 +2,22 @@ name: ci
 
 on:
   pull_request:
-    paths-ignore:
-      - 'backend-domain/**'
-      - 'backend-gateway/**'
+    paths:
+      - '**'
   push:
-    paths-ignore:
-      - 'backend-domain/**'
-      - 'backend-gateway/**'
+    paths:
+      - '**'
 
 jobs:
-  global:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Run common checks
-        run: echo "Run formatting, tests, etc. for global changes"
+  gateway-pr-build:
+    uses: ./.github/workflows/shared-scala-ci.yml
+    with:
+      module: gateway-pr-build
+  gateway-build:
+    uses: ./.github/workflows/shared-scala-ci.yml
+    with:
+      module: gateway-build
+  frontend-pr-build:
+    uses: ./.github/workflows/shared-frontend-ci.yml
+    with:
+      module: gateway-build

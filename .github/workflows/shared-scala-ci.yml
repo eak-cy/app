@@ -1,24 +1,15 @@
 name: shared-scala-ci
-
 on:
   workflow_call:
-    inputs:
-      module:
-        required: true
-        type: string
-
 jobs:
   build:
     name: Build & Test ${{ inputs.module }}
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up ASDF tools
         uses: asdf-vm/actions/setup@v3
-
       - name: Cache ASDF installs
         uses: actions/cache@v4
         with:
@@ -26,7 +17,6 @@ jobs:
           key: ${{ runner.os }}-asdf-${{ hashFiles('**/.tool-versions') }}
           restore-keys: |
             ${{ runner.os }}-asdf-
-
       - name: Cache sbt and Coursier dependencies
         uses: actions/cache@v4
         with:
@@ -37,11 +27,9 @@ jobs:
           key: ${{ runner.os }}-sbt-coursier-${{ hashFiles('**/build.sbt', '**/*.scala', '**/project/build.properties') }}
           restore-keys: |
             ${{ runner.os }}-sbt-coursier-
-
       - name: Set up sbt
         uses: coursier/setup-action@v1
         with:
           apps: sbt
-
       - name: Build and Test ${{ inputs.module }}
-        run: sbt ${{ inputs.module }}/test
+        run: sbt ${{ job.name }}

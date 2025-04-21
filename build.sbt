@@ -10,6 +10,7 @@ ThisBuild / scalafmtOnCompile := !sys.env.getOrElse("DISABLE_SCALA_LINT_ON_COMPI
 
 lazy val root = Project("app", file("."))
   .aggregate(backendModule)
+  .settings(Aliases.all)
 
 lazy val backendModule = Project("backend", file("backend"))
   .aggregate(backendGatewayModule, backendDomainModule)

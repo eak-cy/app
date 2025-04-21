@@ -2,7 +2,7 @@ import sbt.addCommandAlias
 
 object Aliases {
 
-  lazy val all = scalaFmt ++ scalaFix ++ scalaLint
+  lazy val all = scalaFmt ++ scalaFix ++ scalaLint ++ gatewayPrBuild
 
   lazy val scalaLint = addCommandAlias("checkLint", "clean; checkFix; checkFmt") ++
     addCommandAlias("runLint", "clean; runFix; runFmt")
@@ -12,4 +12,6 @@ object Aliases {
 
   lazy val scalaFix = addCommandAlias("checkFix", "scalafixAll --check") ++
     addCommandAlias("runFix", "scalafixAll")
+
+  lazy val gatewayPrBuild = addCommandAlias("gateway-pr-build", "clean; checkFix; test")
 }
