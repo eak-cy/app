@@ -1,4 +1,4 @@
-name: Gateway CI
+name: gateway-ci
 
 on:
   pull_request:
@@ -9,7 +9,7 @@ on:
       - 'backend/gateway/**'
 
 jobs:
-  gateway:
-    uses: ./.github/workflows/module-build.yml
+  gateway-pr-build:
+    uses: ./.github/workflows/shared-scala-ci.yml
     with:
-      module: backend-gateway
+      module: gateway-pr-build

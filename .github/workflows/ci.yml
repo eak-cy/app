@@ -1,5 +1,4 @@
-# .github/workflows/global-ci.yml
-name: Global CI
+name: ci
 
 on:
   pull_request:

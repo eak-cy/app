@@ -1,4 +1,4 @@
-name: Reusable Scala Module CI
+name: shared-scala-ci
 
 on:
   workflow_call:
