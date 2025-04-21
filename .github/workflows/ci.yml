@@ -1,5 +1,4 @@
 name: ci
-
 on:
   pull_request:
     paths:
@@ -7,17 +6,9 @@ on:
   push:
     paths:
       - '**'
-
 jobs:
   gateway-pr-build:
     uses: ./.github/workflows/shared-scala-ci.yml
     with:
       module: gateway-pr-build
-  gateway-build:
-    uses: ./.github/workflows/shared-scala-ci.yml
-    with:
-      module: gateway-build
-  frontend-pr-build:
-    uses: ./.github/workflows/shared-frontend-ci.yml
-    with:
-      module: gateway-build
+
