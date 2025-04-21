@@ -1,11 +1,5 @@
 name: ci
-on:
-  pull_request:
-    paths:
-      - '**'
-  push:
-    paths:
-      - '**'
+on: [pull_request, push]
 jobs:
   gateway-pr-build:
     uses: ./.github/workflows/shared-scala-ci.yml
