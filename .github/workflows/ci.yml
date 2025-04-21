@@ -11,4 +11,3 @@ jobs:
     uses: ./.github/workflows/shared-scala-ci.yml
     with:
       module: gateway-pr-build
-
