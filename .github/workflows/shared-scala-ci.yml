@@ -32,4 +32,4 @@ jobs:
         with:
           apps: sbt
       - name: Build and Test ${{ inputs.module }}
-        run: sbt ${{ job.name }}
+        run: sbt ${{ inputs.module }}
