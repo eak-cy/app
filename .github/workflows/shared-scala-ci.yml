@@ -1,18 +1,18 @@
-name: Scala CI
-
+name: shared-scala-ci
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
+  workflow_call:
+    inputs:
+      module:
+        required: true
+        type: string
 jobs:
-  pr-build:
+  build:
+    name: Build & Test ${{ inputs.module }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Set up ASDF tools (Java, etc.)
+      - name: Set up ASDF tools
         uses: asdf-vm/actions/setup@v3
       - name: Cache ASDF installs
         uses: actions/cache@v4
@@ -35,5 +35,5 @@ jobs:
         uses: coursier/setup-action@v1
         with:
           apps: sbt
-      - name: Build and Test
-        run: sbt -v +test
+      - name: Build and Test ${{ inputs.module }}
+        run: sbt ${{ inputs.module }}
