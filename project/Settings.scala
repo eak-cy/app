@@ -20,6 +20,9 @@ object Settings {
   lazy val ScalaCompiler = Def.settings(
     tpolecatScalacOptions ++= Set(
       ScalacOptions.other("-no-indent"),
+      ScalacOptions.other("-experimental"),
+      ScalacOptions.other("-language:experimental.betterFors"),
+      ScalacOptions.other("-language:experimental.namedTuples"),
       ScalacOptions.other("-old-syntax"),
       ScalacOptions.other("-Wunused:unsafe-warn-patvars"),
       ScalacOptions.other("-Wunused:all"),

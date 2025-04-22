@@ -21,7 +21,7 @@ object Main extends ZIOAppDefault {
       SLF4JBridgeHandler.install()
     }) ++ Runtime.setConfigProvider(TypesafeConfigProvider.fromResourcePath())
 
-  private val app: Task[Nothing] = HttpApp.serverLayer.launch
+  private val app = HttpApp.serverLayer.launch
     .provide(
       HealthCheckService.live,
       GatewayServerConfig.live,

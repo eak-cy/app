@@ -10,32 +10,34 @@ trait ZIOTestOps {
 
   private val configProvider = TypesafeConfigProvider.fromResourcePath()
 
-  implicit class ZIOOps[E, A](private val zio: IO[E, A]) {
+  extension [E, A](zio: IO[E, A]) {
+    private def zioEnv: IO[E, A] = zio
+      .provideLayer(loggerLayer)
+      .withConfigProvider(configProvider)
 
     def zioEither: Either[E, A] =
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe
-          .run[Nothing, Either[E, A]](
-            zio
-              .provideLayer(loggerLayer)
-              .withConfigProvider(configProvider)
-              .either
-          )
+          .run[Nothing, Either[E, A]](zioEnv.either)
           .getOrThrowFiberFailure()
       }
 
     def zioValue: A =
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe
-          .run[E, A](
-            zio.provideLayer(loggerLayer).withConfigProvider(configProvider)
-          )
+          .run[E, A](zioEnv)
           .getOrThrowFiberFailure()
       }
+
+    def zioError: E =
+      Unsafe.unsafe { implicit unsafe =>
+        Runtime.default.unsafe
+          .run[Nothing, Either[E, A]](zioEnv.either)
+          .getOrThrowFiberFailure()
+      }.swap.toOption.get
   }
 
-  implicit class ZIORefOps[A](private val ref: Ref[A]) {
-
+  extension [A](ref: Ref[A]) {
     def refValue: A =
       Unsafe.unsafe { implicit unsafe =>
         Runtime.default.unsafe.run(ref.get).getOrThrowFiberFailure()

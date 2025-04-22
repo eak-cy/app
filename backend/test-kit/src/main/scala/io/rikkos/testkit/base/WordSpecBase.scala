@@ -9,7 +9,7 @@ import org.scalatest.LoneElement
 import org.scalatest.OptionValues
 import scala.concurrent.duration.DurationInt
 
-abstract class WordSpecBase
+open class WordSpecBase
     extends AnyWordSpec
     with PropertyBase
     with should.Matchers
