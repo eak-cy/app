@@ -7,7 +7,7 @@ on:
         type: string
 jobs:
   build:
-    name: Build & Test ${{ inputs.module }}
+    name: Build ${{ inputs.module }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -35,5 +35,5 @@ jobs:
         uses: coursier/setup-action@v1
         with:
           apps: sbt
-      - name: Build and Test ${{ inputs.module }}
+      - name: Build ${{ inputs.module }}
         run: sbt ${{ inputs.module }}
