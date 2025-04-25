@@ -1,8 +1,14 @@
 import { View, Text } from "react-native";
+import { Redirect } from "expo-router";
 
-const App = () => {
+const Dashboard = () => {
+    const user = undefined;
 
-    return <View style={{ padding: 16 }}><Text>My App</Text></View>
+    if (!user) {
+        return <Redirect href="/login" />
+    }
+
+    return <View  style={{ flex: 1 }}><Text>Welcome back farmer!</Text></View>
 }
 
-export default App;
+export default Dashboard;
