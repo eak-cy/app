@@ -1,12 +1,10 @@
 package io.rikkos.testkit.base
 
-import org.scalatest.concurrent.Eventually
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.matchers.should
 import org.scalatest.wordspec.AnyWordSpec
-import org.scalatest.EitherValues
-import org.scalatest.LoneElement
-import org.scalatest.OptionValues
+import org.scalatest.{EitherValues, LoneElement, OptionValues}
+
 import scala.concurrent.duration.DurationInt
 
 open class WordSpecBase

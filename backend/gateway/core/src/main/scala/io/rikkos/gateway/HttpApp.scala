@@ -3,11 +3,11 @@ package io.rikkos.gateway
 import fs2.io.net.Network
 import io.rikkos.gateway.config.GatewayServerConfig
 import io.rikkos.gateway.config.GatewayServerConfig.ServerConfig
+import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
-import org.http4s.server.middleware.EntityLimiter
 import org.http4s.server.Server
-import org.http4s.HttpRoutes
+import org.http4s.server.middleware.EntityLimiter
 import smithy4s.http4s.SimpleRestJsonBuilder
 import zio.*
 import zio.interop.catz.*
