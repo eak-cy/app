@@ -1,5 +1,7 @@
-import smithy4s.codegen.Smithy4sCodegenPlugin
 import Projects.ProjectOps
+import smithy4s.codegen.Smithy4sCodegenPlugin
+
+val enableScalaLint = sys.env.getOrElse("ENABLE_SCALA_LINT_ON_COMPILE", "true").toBoolean
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -7,8 +9,8 @@ ThisBuild / scalaVersion      := "3.6.4"
 ThisBuild / version           := "local"
 ThisBuild / organization      := "io.rikkos"
 ThisBuild / organizationName  := "Rikkos"
-ThisBuild / scalafixOnCompile := !sys.env.getOrElse("DISABLE_SCALA_LINT_ON_COMPILE", "false").toBoolean
-ThisBuild / scalafmtOnCompile := !sys.env.getOrElse("DISABLE_SCALA_LINT_ON_COMPILE", "false").toBoolean
+ThisBuild / scalafixOnCompile := enableScalaLint
+ThisBuild / scalafmtOnCompile := enableScalaLint
 ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
 ThisBuild / semanticdbEnabled := true
 
