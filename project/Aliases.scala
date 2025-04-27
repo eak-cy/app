@@ -5,7 +5,7 @@ object Aliases {
   lazy val all = scalaFmt ++ scalaFix ++ scalaLint ++ gatewayPrBuild
 
   lazy val scalaLint = addCommandAlias("checkLint", "clean; checkFix; checkFmt") ++
-    addCommandAlias("runLint", "clean; runFmt; runFix")
+    addCommandAlias("runLint", "clean; runFix; runFmt")
 
   lazy val scalaFmt = addCommandAlias("checkFmt", "scalafmtCheckAll; scalafmtSbtCheck") ++
     addCommandAlias("runFmt", "scalafmtAll; scalafmtSbt")
