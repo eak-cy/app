@@ -1,24 +1,79 @@
+import Projects.ProjectOps
+import smithy4s.codegen.Smithy4sCodegenPlugin
+
+val enableScalaLint = sys.env.getOrElse("ENABLE_SCALA_LINT_ON_COMPILE", "true").toBoolean
+
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
-ThisBuild / scalaVersion := "3.3.5"
-ThisBuild / version := "local"
-ThisBuild / organization := "io.farmer.app"
-ThisBuild / organizationName := "Farmers App"
+ThisBuild / scalaVersion      := "3.6.4"
+ThisBuild / version           := "local"
+ThisBuild / organization      := "io.rikkos"
+ThisBuild / organizationName  := "Rikkos"
+ThisBuild / scalafixOnCompile := enableScalaLint
+ThisBuild / scalafmtOnCompile := enableScalaLint
+ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
+ThisBuild / semanticdbEnabled := true
 
-ThisBuild / scalafixOnCompile := !sys.env.getOrElse("DISABLE_SCALA_LINT_ON_COMPILE", "false").toBoolean
-ThisBuild / scalafmtOnCompile := !sys.env.getOrElse("DISABLE_SCALA_LINT_ON_COMPILE", "false").toBoolean
+lazy val backendDirName = "backend"
+
+def createBackendModule(root: String)(subModule: Option[String]): Project = {
+  val moduleName = subModule.map(sm => s"$root-$sm").getOrElse(root)
+  val directory  = subModule.map(sm => s"$root/$sm").getOrElse(root)
+  Project(moduleName, file(s"$backendDirName/$directory"))
+    .settings(Settings.ScalaCompiler)
+}
 
 lazy val root = Project("app", file("."))
   .aggregate(backendModule)
   .settings(Aliases.all)
 
+// Backend modules
 lazy val backendModule = Project("backend", file("backend"))
-  .aggregate(backendGatewayModule, backendDomainModule)
+  .aggregate(backendDomainModule, backendTestKitModule, backendGatewayRoot)
 
-lazy val backendGatewayModule = Project("backend-gateway", file("backend/gateway"))
+lazy val backendDomainModule = createBackendModule("domain")(None)
+  .withDependencies(Dependencies.iron)
 
-lazy val backendDomainModule = Project("backend-domain", file("backend/domain"))
+lazy val backendTestKitModule = createBackendModule("test-kit")(None)
+  .dependsOn(backendDomainModule)
+  .withDependencies(
+    Dependencies.zio,
+    Dependencies.zioConfig,
+    Dependencies.zioConfigTypesafe,
+    Dependencies.zioLogging,
+    Dependencies.zioLoggingSL4J,
+    Dependencies.zioInteropCats,
+    Dependencies.scalaTest,
+    Dependencies.scalacheck,
+    Dependencies.scalaTestPlusCheck,
+  )
 
-lazy val modules: Seq[ProjectReference] = Seq(
-  backendModule,
-)
+// Gateway
+lazy val createBackendGatewayModule = createBackendModule("gateway") _
+
+lazy val backendGatewayRoot = createBackendGatewayModule(None)
+  .aggregate(backendGatewayCore, backendGatewayIt)
+
+lazy val backendGatewayCore = createBackendGatewayModule(Some("core"))
+  .enablePlugins(Smithy4sCodegenPlugin)
+  .dependsOn(backendTestKitModule % Test)
+  .dependsOn(backendDomainModule)
+  .withDependencies(
+    Dependencies.zio,
+    Dependencies.zioConfig,
+    Dependencies.zioConfigMagnolia,
+    Dependencies.zioConfigTypesafe,
+    Dependencies.zioLogging,
+    Dependencies.zioLoggingSL4J,
+    Dependencies.zioInteropCats,
+    Dependencies.smithy4sHttp4s,
+    Dependencies.http4sDsl,
+    Dependencies.http4sEmberServcer,
+    Dependencies.pureconfig,
+    Dependencies.pureconfigCats,
+    Dependencies.pureconfigCatsEffect,
+    Dependencies.julToSlf4j,
+    Dependencies.logback,
+  )
+
+lazy val backendGatewayIt = createBackendGatewayModule(Some("it"))

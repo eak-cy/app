@@ -13,5 +13,5 @@ object Aliases {
   lazy val scalaFix = addCommandAlias("checkFix", "scalafixAll --check") ++
     addCommandAlias("runFix", "scalafixAll")
 
-  lazy val gatewayPrBuild = addCommandAlias("gateway-pr-build", "clean; checkFix; test")
+  lazy val gatewayPrBuild = addCommandAlias("gateway-pr-build", "clean; checkLint; test")
 }
