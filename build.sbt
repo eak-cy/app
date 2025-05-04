@@ -46,6 +46,7 @@ lazy val backendTestKitModule = createBackendModule("test-kit")(None)
     Dependencies.scalaTest,
     Dependencies.scalacheck,
     Dependencies.scalaTestPlusCheck,
+    Dependencies.testContainers,
   )
 
 // Gateway
@@ -56,8 +57,10 @@ lazy val backendGatewayRoot = createBackendGatewayModule(None)
 
 lazy val backendGatewayCore = createBackendGatewayModule(Some("core"))
   .enablePlugins(Smithy4sCodegenPlugin)
+  .enablePlugins(DockerPlugin)
   .dependsOn(backendTestKitModule % Test)
   .dependsOn(backendDomainModule)
+  .settings(Docker.settings(docker, Compile))
   .withDependencies(
     Dependencies.zio,
     Dependencies.zioConfig,
@@ -68,7 +71,7 @@ lazy val backendGatewayCore = createBackendGatewayModule(Some("core"))
     Dependencies.zioInteropCats,
     Dependencies.smithy4sHttp4s,
     Dependencies.http4sDsl,
-    Dependencies.http4sEmberServcer,
+    Dependencies.http4sEmberServer,
     Dependencies.pureconfig,
     Dependencies.pureconfigCats,
     Dependencies.pureconfigCatsEffect,
@@ -77,3 +80,8 @@ lazy val backendGatewayCore = createBackendGatewayModule(Some("core"))
   )
 
 lazy val backendGatewayIt = createBackendGatewayModule(Some("it"))
+  .dependsOn(backendGatewayCore % Test)
+  .dependsOn(backendTestKitModule % Test)
+  .withDependencies(
+    Dependencies.http4sEmberClient,
+  )

@@ -3,7 +3,7 @@ import sbt.*
 object Dependencies {
 
   lazy val http4sV             = "0.23.30"
-  lazy val smithy4sV           = "0.18.33"
+  lazy val smithy4sV           = "0.18.34"
   lazy val zioV                = "2.1.17"
   lazy val zioConfigV          = "4.0.4"
   lazy val zioInteropCatsV     = "23.1.0.5"
@@ -11,7 +11,7 @@ object Dependencies {
   lazy val zioLoggingV         = "2.5.0"
   lazy val logbackV            = "1.5.18"
   lazy val julToSlf4jV         = "2.0.17"
-  lazy val pureconfigV         = "0.17.8"
+  lazy val pureconfigV         = "0.17.9"
   lazy val scalaTestV          = "3.2.19"
   lazy val scalaTestPlusCheckV = "3.2.11.0"
   lazy val scalacheckV         = "1.18.1"
@@ -19,8 +19,9 @@ object Dependencies {
   lazy val ironV               = "3.0.0"
 
   // Http4s
-  lazy val http4sDsl          = "org.http4s" %% "http4s-dsl"          % http4sV
-  lazy val http4sEmberServcer = "org.http4s" %% "http4s-ember-server" % http4sV
+  lazy val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sV
+  lazy val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sV
+  lazy val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sV
 
   // Smithy
   lazy val smithy4sHttp4s = "com.disneystreaming.smithy4s" %% "smithy4s-http4s" % smithy4sV
