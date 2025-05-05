@@ -5,14 +5,18 @@ val enableScalaLint = sys.env.getOrElse("ENABLE_SCALA_LINT_ON_COMPILE", "true").
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
-ThisBuild / scalaVersion      := "3.6.4"
-ThisBuild / version           := "local"
-ThisBuild / organization      := "io.rikkos"
-ThisBuild / organizationName  := "Rikkos"
-ThisBuild / scalafixOnCompile := enableScalaLint
-ThisBuild / scalafmtOnCompile := enableScalaLint
-ThisBuild / semanticdbVersion := scalafixSemanticdb.revision
-ThisBuild / semanticdbEnabled := true
+ThisBuild / scalaVersion              := "3.6.4"
+ThisBuild / version                   := "local"
+ThisBuild / organization              := "io.rikkos"
+ThisBuild / organizationName          := "Rikkos"
+ThisBuild / scalafixOnCompile         := enableScalaLint
+ThisBuild / scalafmtOnCompile         := enableScalaLint
+ThisBuild / semanticdbVersion         := scalafixSemanticdb.revision
+ThisBuild / semanticdbEnabled         := true
+ThisBuild / Test / fork               := true
+ThisBuild / run / fork                := true
+ThisBuild / Test / parallelExecution  := true
+ThisBuild / Test / testForkedParallel := true
 
 lazy val backendDirName = "backend"
 
@@ -46,7 +50,8 @@ lazy val backendTestKitModule = createBackendModule("test-kit")(None)
     Dependencies.scalaTest,
     Dependencies.scalacheck,
     Dependencies.scalaTestPlusCheck,
-    Dependencies.testContainers,
+    Dependencies.testContainersScala,
+    Dependencies.testContainersJava,
   )
 
 // Gateway
@@ -83,5 +88,5 @@ lazy val backendGatewayIt = createBackendGatewayModule(Some("it"))
   .dependsOn(backendGatewayCore % Test)
   .dependsOn(backendTestKitModule % Test)
   .withDependencies(
-    Dependencies.http4sEmberClient,
+    Dependencies.http4sEmberClient
   )

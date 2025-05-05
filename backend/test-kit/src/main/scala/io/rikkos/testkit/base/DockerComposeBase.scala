@@ -17,7 +17,7 @@ trait DockerComposeBase extends TestContainerForAll { self: Suite =>
 
   override val containerDef: DockerComposeContainer.Def =
     DockerComposeContainer.Def(
-      composeFiles = DockerComposeContainer.ComposeFile(Left(new File(s"docker/$dockerComposeFile"))),
+      composeFiles = DockerComposeContainer.ComposeFile(Left(new File(s"$dockerComposeFile"))),
       exposedServices = exposedServices.toSeq,
       tailChildContainers = true,
       logConsumers = logConsumers
