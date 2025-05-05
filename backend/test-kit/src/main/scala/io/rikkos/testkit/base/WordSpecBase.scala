@@ -17,5 +17,5 @@ open class WordSpecBase
     with ScalaFutures
     with LoneElement {
 
-  implicit override val patienceConfig: PatienceConfig = PatienceConfig(10.seconds, 200.millis)
+  implicit override val patienceConfig: PatienceConfig = PatienceConfig(30.seconds, 200.millis)
 }

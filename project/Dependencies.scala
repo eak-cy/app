@@ -2,25 +2,27 @@ import sbt.*
 
 object Dependencies {
 
-  lazy val http4sV             = "0.23.30"
-  lazy val smithy4sV           = "0.18.33"
-  lazy val zioV                = "2.1.17"
-  lazy val zioConfigV          = "4.0.4"
-  lazy val zioInteropCatsV     = "23.1.0.5"
-  lazy val catsV               = "2.13.0"
-  lazy val zioLoggingV         = "2.5.0"
-  lazy val logbackV            = "1.5.18"
-  lazy val julToSlf4jV         = "2.0.17"
-  lazy val pureconfigV         = "0.17.8"
-  lazy val scalaTestV          = "3.2.19"
-  lazy val scalaTestPlusCheckV = "3.2.11.0"
-  lazy val scalacheckV         = "1.18.1"
-  lazy val testContainersV     = "0.43.0"
-  lazy val ironV               = "3.0.0"
+  lazy val http4sV              = "0.23.30"
+  lazy val smithy4sV            = "0.18.34"
+  lazy val zioV                 = "2.1.17"
+  lazy val zioConfigV           = "4.0.4"
+  lazy val zioInteropCatsV      = "23.1.0.5"
+  lazy val catsV                = "2.13.0"
+  lazy val zioLoggingV          = "2.5.0"
+  lazy val logbackV             = "1.5.18"
+  lazy val julToSlf4jV          = "2.0.17"
+  lazy val pureconfigV          = "0.17.9"
+  lazy val scalaTestV           = "3.2.19"
+  lazy val scalaTestPlusCheckV  = "3.2.11.0"
+  lazy val scalacheckV          = "1.18.1"
+  lazy val testContainersScalaV = "0.43.0"
+  lazy val testContainersJavaV  = "1.21.0"
+  lazy val ironV                = "3.0.1"
 
   // Http4s
-  lazy val http4sDsl          = "org.http4s" %% "http4s-dsl"          % http4sV
-  lazy val http4sEmberServcer = "org.http4s" %% "http4s-ember-server" % http4sV
+  lazy val http4sDsl         = "org.http4s" %% "http4s-dsl"          % http4sV
+  lazy val http4sEmberServer = "org.http4s" %% "http4s-ember-server" % http4sV
+  lazy val http4sEmberClient = "org.http4s" %% "http4s-ember-client" % http4sV
 
   // Smithy
   lazy val smithy4sHttp4s = "com.disneystreaming.smithy4s" %% "smithy4s-http4s" % smithy4sV
@@ -50,8 +52,9 @@ object Dependencies {
   lazy val julToSlf4j = "org.slf4j"      % "jul-to-slf4j"    % julToSlf4jV
 
   // Test
-  lazy val scalaTest          = "org.scalatest"     %% "scalatest"                      % scalaTestV
-  lazy val scalaTestPlusCheck = "org.scalatestplus" %% "scalacheck-1-15"                % scalaTestPlusCheckV
-  lazy val scalacheck         = "org.scalacheck"    %% "scalacheck"                     % scalacheckV
-  lazy val testContainers     = "com.dimafeng"      %% "testcontainers-scala-scalatest" % testContainersV
+  lazy val scalaTest           = "org.scalatest"     %% "scalatest"                      % scalaTestV
+  lazy val scalaTestPlusCheck  = "org.scalatestplus" %% "scalacheck-1-15"                % scalaTestPlusCheckV
+  lazy val scalacheck          = "org.scalacheck"    %% "scalacheck"                     % scalacheckV
+  lazy val testContainersJava  = "org.testcontainers" % "testcontainers"                 % testContainersJavaV
+  lazy val testContainersScala = "com.dimafeng"      %% "testcontainers-scala-scalatest" % testContainersScalaV
 }
