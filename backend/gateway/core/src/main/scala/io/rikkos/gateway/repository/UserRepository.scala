@@ -1,6 +1,5 @@
 package io.rikkos.gateway.repository
 
-
 import io.rikkos.gateway.smithy.UserDetails
 import zio.*
 
