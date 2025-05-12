@@ -94,5 +94,5 @@ lazy val backendGatewayIt = createBackendGatewayModule(Some("it"))
     test := {
       val testResult = (backendGatewayCore / docker).value
       (Test / test).value
-    },
+    }
   )
