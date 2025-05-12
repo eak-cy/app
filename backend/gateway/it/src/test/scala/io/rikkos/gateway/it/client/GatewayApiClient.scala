@@ -11,7 +11,6 @@ import zio.*
 import zio.interop.catz.*
 
 final case class GatewayApiClient(config: GatewayApiClientConfig, client: Client[Task]) {
-
   import config.*
 
   def liveness: Task[Status] = client.get(healthUri / "liveness")(_.status.pure[Task])

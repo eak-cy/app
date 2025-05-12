@@ -90,3 +90,9 @@ lazy val backendGatewayIt = createBackendGatewayModule(Some("it"))
   .withDependencies(
     Dependencies.http4sEmberClient
   )
+  .settings(
+    test := {
+      val testResult = (backendGatewayCore / docker).value
+      (Test / test).value
+    },
+  )
