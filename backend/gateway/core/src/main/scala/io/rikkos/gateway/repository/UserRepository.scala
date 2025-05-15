@@ -10,15 +10,17 @@ trait UserRepository {
 }
 
 object UserRepository {
+
+  final private class UserRepositoryMemory(userDetailsRef: Ref[Map[UUID, UserDetails]]) extends UserRepository {
+    override def insertUserDetails(userDetails: UserDetails): UIO[Unit] = for {
+      uuid <- ZIO.succeed(UUID.randomUUID())
+      _    <- userDetailsRef.update(_.updated(uuid, userDetails))
+    } yield ()
+  }
+
   val layer: ULayer[UserRepository] = ZLayer {
-    Ref.make(Map.empty[UUID, UserDetails]).map { ref =>
-      new UserRepository {
-        override def insertUserDetails(userDetails: UserDetails): UIO[Unit] =
-          for {
-            uuid <- ZIO.succeed(UUID.randomUUID())
-            _    <- ref.update(_.updated(uuid, userDetails))
-          } yield ()
-      }
+    Ref.make(Map.empty[UUID, UserDetails]).map { userDetailsRef =>
+      new UserRepositoryMemory(userDetailsRef)
     }
   }
 }

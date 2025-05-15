@@ -23,6 +23,7 @@ class UserManagementServiceSpec extends ZWordSpecBase {
           .isRight shouldBe true
 
       }
+
       "throw exception when repository fail" in {
         val userManagementService: ZIO[Any, Nothing, smithy.UserManagementService[Task]] =
           userManagementServiceEnv
