@@ -1,5 +1,4 @@
 $version: "2.0"
-
 namespace io.rikkos.gateway.smithy
 
 @error("server")

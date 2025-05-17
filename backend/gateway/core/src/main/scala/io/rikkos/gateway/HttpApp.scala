@@ -23,6 +23,11 @@ object HttpApp {
     routes <- SimpleRestJsonBuilder.routes(probes).resource.toScopedZIO
   } yield routes
 
+  private val userManagementRoutesResource = for {
+    userManagementService <- ZIO.service[smithy.UserManagementService[Task]]
+    routes                <- SimpleRestJsonBuilder.routes(userManagementService).resource.toScopedZIO
+  } yield routes
+
   private def server(config: ServerConfig, routes: HttpRoutes[Task]) = for {
     emberServer <- EmberServerBuilder
       .default[Task]
@@ -40,9 +45,10 @@ object HttpApp {
 
   val serverLayer = ZLayer.scoped {
     (for {
-      config       <- ZIO.service[GatewayServerConfig]
-      healthRoutes <- healthRoutesResource
-      healthServer <- server(config.health, healthRoutes)
+      config        <- ZIO.service[GatewayServerConfig]
+      healthRoutes  <- healthRoutesResource
+      serviceRoutes <- userManagementRoutesResource
+      healthServer  <- server(config.health, healthRoutes)
     } yield healthServer).forkScoped
   }
 }

@@ -10,7 +10,7 @@ class HealthCheckServiceSpec extends ZWordSpecBase {
   val healthCheckServiceEnv = ZIO.service[smithy.HealthCheckService[Task]]
 
   "HealthCheckService" when {
-    ".liveness" should {
+    "liveness" should {
       "return a successful response" in {
         val healthCheckService = healthCheckServiceEnv.provide(HealthCheckService.live)
 
@@ -18,7 +18,7 @@ class HealthCheckServiceSpec extends ZWordSpecBase {
       }
     }
 
-    ".readiness" should {
+    "readiness" should {
       "return a successful response" in {
         val healthCheckService = healthCheckServiceEnv.provide(HealthCheckService.live)
 
