@@ -19,8 +19,8 @@ object HttpApp {
   import dsl.*
 
   private val healthRoutesResource = for {
-    probes <- ZIO.service[smithy.HealthCheckService[Task]]
-    routes <- SimpleRestJsonBuilder.routes(probes).resource.toScopedZIO
+    healthCheckService <- ZIO.service[smithy.HealthCheckService[Task]]
+    routes: HttpRoutes[Task] <- SimpleRestJsonBuilder.routes(healthCheckService).resource.toScopedZIO
   } yield routes
 
   private val serviceRoutesResource = for {
