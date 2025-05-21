@@ -2,7 +2,8 @@ package io.rikkos.gateway
 
 import io.rikkos.domain.AppName
 import io.rikkos.gateway.config.GatewayServerConfig
-import io.rikkos.gateway.service.HealthCheckService
+import io.rikkos.gateway.repository.UserRepository
+import io.rikkos.gateway.service.{HealthCheckService, UserManagementService}
 import org.slf4j.bridge.SLF4JBridgeHandler
 import zio.*
 import zio.config.typesafe.TypesafeConfigProvider
@@ -24,6 +25,8 @@ object Main extends ZIOAppDefault {
   private val app = HttpApp.serverLayer.launch
     .provide(
       HealthCheckService.live,
+      UserManagementService.live,
+      UserRepository.layer,
       GatewayServerConfig.live,
       AppNameLive,
     )
