@@ -48,6 +48,8 @@ Each slice guide links its technology standards.
 
 ### Product epics
 
+The Product Owner owns all epic pages and every other document under `pages/`. Engineering Manager owns engineering documentation outside `pages/` and coordinates page updates with PO before implementation and after code review. Lead engineers do not update documentation.
+
 `pages/epics/` holds the business-facing spec for each area of the product, published via GitHub Pages. An epic says what a user can do and why; `agent-docs/features/` stays the engineering source of truth for endpoints, types, files, and tests.
 
 | Guide | Read when |
@@ -178,4 +180,4 @@ sbt "gatewayCore/Docker/publishLocal"                   # build gateway image
 docker compose -f compose/compose.yaml up -d            # local stack: postgres, flyway, gateway, mocks
 ```
 
-`/feature "<description>"` — Product Owner → Engineering Manager → complexity-selected Lead Engineer (`LOW|MEDIUM|HIGH`). PO owns product requirements, asking the user directly for anything it can't derive itself; EM challenges the spec, routes remaining product ambiguity back to PO, maps docs/outcome slices, and applies the [complexity contract](.agents/contracts/complexity.md); the selected Lead follows the [Lead contract](.agents/contracts/lead-engineer.md) to design, implement, and verify. Sources: `.agents/`; Claude: per-file `.claude/` symlinks; Codex: `.codex/agents/`. Setup: [Agent pipeline](agent-docs/agent-pipeline-setup.md).
+`/feature "<description>"` — quick Product Owner brief → Engineering Manager handoff → one complexity-selected Lead (`LOW|MEDIUM|HIGH`) → EM review and done decision. Every role asks the user about unresolved behavior or meaningful implementation choices before implementing them; settled answers carry forward. The user must explicitly agree to EM's brief plan before Lead implementation. PO captures product requirements; EM checks them against code, resolves approach and edge-case questions, owns engineering documentation outside `pages/`, and reviews Lead code. PO owns all epics and other documentation under `pages/`. Both update their docs before implementation and after reviewed results; EM coordinates and verifies completion. Lead implements code/tests and reports results; it never updates docs. Handoffs stay compact. Follow the shared [workflow](.agents/commands/feature.md) and [interaction rules](.agents/contracts/workflow.md). In Codex, a request to run `/feature` or “use the feature workflow” means read and execute that shared command; it does not require a native slash command. Sources: `.agents/`; Claude: per-file `.claude/` symlinks; Codex: thin `.codex/agents/` adapters. Setup: [Agent pipeline](agent-docs/agent-pipeline-setup.md).

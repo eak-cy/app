@@ -1,10 +1,40 @@
 # Agent pipeline setup
 
-`/feature "<description>"` runs Product Owner → Engineering Manager → one complexity-selected Lead Engineer through local [OmniRoute](https://github.com/diegosouzapw/OmniRoute).
+Both Codex and Claude Code use the same [feature workflow](../.agents/commands/feature.md): quick PO brief → EM technical handoff → one Lead implements → EM reviews and marks done. All roles follow the same [question and efficiency rules](../.agents/contracts/workflow.md).
 
-Shared sources are `.agents/{agents,contracts,commands,skills}/`; matching `.claude/` files are relative symlinks. Edit `.agents/`. Claude-only config/files remain real files in `.claude/`; diverge one shared file by replacing only its symlink. `.codex/agents/` contains thin Codex profiles that reuse the shared contracts and pin native Codex model/effort tiers.
+## Shared sources and host adapters
 
-OmniRoute is per-engineer local infrastructure. Never commit its admin password, API key, or provider keys.
+- `AGENTS.md` is the repository instruction source; `CLAUDE.md` is a relative symlink to it.
+- `.agents/{agents,contracts,commands,skills}/` owns shared guidance. Matching `.claude/` files are relative symlinks; edit the source, not copies.
+- `.codex/agents/*.toml` contains native metadata/model settings and points to the same role Markdown, ignoring its Claude YAML frontmatter. Keep behavioral instructions in `.agents/`.
+- Both hosts use the same `agent-docs/`, `pages/epics/`, and `docs/`. No per-host product specifications.
+- Local credentials/settings stay gitignored. Codex does not need OmniRoute. The optional Claude routing setup below is per-engineer infrastructure.
+
+Codex project roles use the [official TOML agent format](https://learn.chatgpt.com/docs/agent-configuration/subagents). Claude uses [Markdown subagents](https://code.claude.com/docs/en/sub-agents). These are host adapters, not interchangeable configuration formats.
+
+## Run
+
+Open the repository in a fresh session after changing agent profiles. In Claude Code use `/feature "<description>"`. In Codex say `Use the feature workflow for <description>`; AGENTS.md routes this to the shared command. A literal `/feature` request in Codex has the same repository meaning, but a native slash-menu entry is not required or promised.
+
+The main conversation spawns/resumes each role and relays questions and Lead↔EM collaboration. Claude subagents do not have `AskUserQuestion`; a role returns `USER_QUESTION` and the main conversation asks you, then returns your answer. Use the same relay in Codex whenever direct user questions are unavailable. Do not depend on a host-specific task API or nested agents. If subagents are unavailable, the main conversation performs the roles sequentially and says so. Ordinary ChatGPT chat without repository/tool access cannot automatically load these files; this setup targets Codex and repository-enabled agent sessions.
+
+## Roles and routing
+
+| Role | Claude | Codex | Ownership |
+|---|---|---|---|
+| Product Owner | `sonnet` | parent default | product requirements, scope, acceptance, all `pages/` documentation |
+| Engineering Manager | `sonnet` | parent default | requirements/code analysis, agreed approach, engineering docs outside `pages/`, code review |
+| Lead LOW | `haiku` | `gpt-5.6-terra`/low | bounded implementation |
+| Lead MEDIUM | `sonnet` | `gpt-5.6-sol`/high | contained feature/integration work |
+| Lead HIGH | `opus` | `gpt-5.6-sol`/xhigh | high-risk implementation |
+
+EM uses the [complexity contract](../.agents/contracts/complexity.md). Keep model selection separate from shared behavior; native model availability depends on the host/account. PO no longer writes a finished epic before handoff. EM prepares engineering documentation outside `pages/`; PO owns and updates all epics and other documentation under `pages/`. Before Lead implementation, both update affected docs from the agreed requirements and approach, marking pending work explicitly. Lead implements code/tests and reports results; it never updates docs. EM reviews the actual code, updates engineering docs, and sends the Lead's output and verified findings to PO for page updates. EM confirms both sets match the implementation before marking done, per delivered slice/PR, accepting minor disclosed polish follow-ups. Required checks and agreed behavior still matter.
+
+Each role asks about unresolved preferences, including implementation choices with meaningful tradeoffs. Questions go straight to the user through the main conversation when needed, not through a PO↔EM loop. Prior answers carry forward. EM must obtain explicit user agreement to the brief plan before handing implementation to the complexity-selected Lead. Material plan changes require renewed agreement; any role, including Lead, can raise new questions at any time. No extra formal planning stage or repeated full-package task dispatch.
+
+## Optional Claude OmniRoute setup
+
+Never commit OmniRoute's admin password, API key, or provider keys. The following records the tested local setup; verify provider IDs against your installation.
 
 ## Requirements
 
@@ -79,41 +109,9 @@ OMNIROUTE_API_KEY=<key> omniroute chat "reply with exactly: pong" --model cc/cla
 
 Restart every Claude Code process; environment is read at startup. `ANTHROPIC_BASE_URL` must not end in `/v1`.
 
-## Checked-in roles/routing
+## User questions and permissions
 
-| Role | Claude | Codex | Ownership |
-|---|---|---|---|
-| Product Owner | `haiku` | parent default | complete product requirements/decisions; asks the user directly for gaps |
-| Engineering Manager | `sonnet` | parent default | edge cases, doc topology, outcome chunks, complexity |
-| Lead LOW | `haiku` | `gpt-5.6-terra`/low | bounded known-pattern work |
-| Lead MEDIUM | `sonnet` | `gpt-5.6-sol`/high | contained new behavior through multi-layer/risky work |
-| Lead HIGH | `opus` | `gpt-5.6-sol`/xhigh | highest-risk/system-wide work |
-
-EM classifies the whole request by `.agents/contracts/complexity.md`'s highest material trigger. One matching Lead session plans, implements, and reviews the full request; scope changes force reclassification. Shared execution rules live in `.agents/contracts/lead-engineer.md`.
-
-The Product Owner and Lead LOW roles run on `haiku` (Claude Haiku 4.5) — the cheapest capable Claude tier — so the whole pipeline runs on Anthropic models without depending on external free routes. If you instead route through OmniRoute free IDs, verify each with `omniroute chat` before use, as availability changes and some return 401/anti-abuse failures.
-
-## Restrictive Claude permissions
-
-If “don't ask” mode denies tools, add to gitignored `.claude/settings.local.json` `permissions.allow` (`AskUserQuestion` is used by the Product Owner to interview the user directly):
-
-```json
-"AskUserQuestion",
-"WebFetch",
-"WebSearch"
-```
-
-This does not bypass Claude Code's separate, non-configurable auto-mode classifier.
-
-## Run
-
-In a fresh Claude Code session:
-
-```text
-/feature "add a health-check endpoint"
-```
-
-PO owns the final product specification, asking the user directly for anything it can't derive itself. EM challenges the spec and routes any remaining product ambiguity back to PO — never asking the user directly — maps only required docs/outcome slices, and assigns complexity. The selected expert Lead owns all coding decisions and follows [Feature flow](features/flow/README.md), including same-PR tests/docs.
+Run the main conversation in a mode that allows user interaction. Claude's `dontAsk` mode denies `AskUserQuestion` even if allowlisted; use a normal interactive mode or relay the question as plain text. A tool permission denial is not a user answer. Do not change local permissions or bypass host approval controls automatically.
 
 ## Troubleshooting
 

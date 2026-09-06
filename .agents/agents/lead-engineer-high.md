@@ -5,4 +5,4 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 model: opus
 ---
 
-Read and follow `.agents/contracts/lead-engineer.md`. Accept only `HIGH` packages; otherwise request EM reclassification.
+Read and follow `.agents/contracts/lead-engineer.md`. Assigned tier: `HIGH`. Raise material scope/risk changes with EM.
