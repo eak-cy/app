@@ -6,7 +6,6 @@ import io.mesazon.domain.gateway.*
 import io.mesazon.gateway.repository.domain.*
 import io.mesazon.gateway.repository.queries.*
 import io.mesazon.generator.IDGenerator
-import org.postgresql.util.{PSQLException, PSQLState}
 import org.typelevel.doobie.Transactor
 import zio.*
 
@@ -85,7 +84,8 @@ object UserDetailsRepository {
         )
         .mapError(
           toServiceError(
-            s"Failed to updateUserDetails: [$userID], [$onboardStageUpdate], [$fullNameOptUpdate], [$phoneNumberOptUpdate]"
+            s"Failed to updateUserDetails: [$userID], [$onboardStageUpdate], [$fullNameOptUpdate], [$phoneNumberOptUpdate]",
+            uniqueConstraintViolationMessage,
           )
         )
     } yield userDetailsRow
@@ -108,34 +108,10 @@ object UserDetailsRepository {
           ServiceError.InternalServerError.RepositoryError(s"Failed to getUserDetailsByEmail: [$email]", e)
         )
 
-    private def toServiceError(errorMessage: String)(throwable: Throwable): ServiceError =
-      findUniqueConstraintViolated(throwable) match {
-        case Some(constraint) =>
-          ServiceError.ConflictError.UniqueConstraintViolation(
-            uniqueConstraintViolationMessage(constraint),
-            throwable,
-          )
-        case None =>
-          ServiceError.InternalServerError.RepositoryError(errorMessage, throwable)
-      }
-
-    private def findUniqueConstraintViolated(throwable: Throwable): Option[String] =
-      throwable match {
-        case null                                                                                             => None
-        case psqlException: PSQLException if psqlException.getSQLState == PSQLState.UNIQUE_VIOLATION.getState =>
-          Option(psqlException.getServerErrorMessage).flatMap(serverErrorMessage =>
-            Option(serverErrorMessage.getConstraint)
-          )
-        case other => Option(other.getCause).filterNot(_ eq other).flatMap(findUniqueConstraintViolated)
-      }
-
-    private def uniqueConstraintViolationMessage(constraint: String): String =
-      constraint match {
-        case "uq_user_details_phone_number" =>
-          "The phone number given already belongs to a different account"
-        case other =>
-          s"A unique constraint was violated: [$other]"
-      }
+    private val uniqueConstraintViolationMessage: PartialFunction[String, String] = {
+      case "uq_user_details_phone_number" =>
+        "The phone number given already belongs to a different account"
+    }
   }
 
   private def observed(repository: UserDetailsRepository): UserDetailsRepository = repository

@@ -2,6 +2,8 @@
 
 For a new feature/endpoint, read its feature doc, current slice guide, and linked technology standards only. Every PR is independently reviewable and contains its applicable tests.
 
+Follow [Development practices](../../standards/development-practices.md): agree concrete behavior examples (BDD), model the business rules within existing feature boundaries (DDD), and implement behavior through focused red/green/refactor cycles (TDD). These fit within the existing plan and slices, without additional handoffs.
+
 ## Implementation slices
 
 | Slice | Guide | Output | Required proof |
