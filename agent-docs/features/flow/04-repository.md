@@ -1,4 +1,4 @@
-# PR 4 — Repository
+# Slice 4 — Repository
 
 Use after schema migration. Add persistence-only domain types, Row/Queries/Repository code, codecs, config, layer definitions, and real-Postgres tests. Read [PostgreSQL](../../standards/postgres.md), [Doobie](../../standards/doobie.md), and [Scala](../../standards/scala.md).
 
@@ -67,7 +67,7 @@ When changing the transactor, pool, SQL logging, or database test-client runtime
 - Map every `DbException` through one `toServiceError(operationMessage)` function. Default: `InternalServerError.RepositoryError(message, underlying)`.
 - A `PSQLException` with state `23505`/`UNIQUE_VIOLATION` maps by constraint name to `ConflictError.UniqueConstraintViolation` (409), retaining the underlying exception. Never race-prone pre-check a uniqueness constraint.
 - Ensure the Smithy operation declares `Conflict`; otherwise the conflict may render as 500.
-- Repository layer: `ZLayer.derive[FooRepositoryImpl].project[FooRepository](identity)`. Repository specs provide Queries/repository with the transactor, clock, and ID generator; PR 5 adds them to the full application graph.
+- Repository layer: `ZLayer.derive[FooRepositoryImpl].project[FooRepository](identity)`. Repository specs provide Queries/repository with the transactor, clock, and ID generator; Slice 5 adds them to the full application graph.
 - Table config stays in lockstep: `RepositoryConfig` field + `allTableNames`, core `application.conf`, gateway-it `application.conf`, migration, Row, Queries, Repository, and layer graph.
 
 ## Required proof: real PostgreSQL

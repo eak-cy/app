@@ -1,36 +1,32 @@
 # Agent pipeline setup
 
-Both Codex and Claude Code use the same [feature workflow](../.agents/commands/feature.md): quick PO brief → EM technical handoff → one Lead implements → EM reviews and marks done. All roles follow the same [question and efficiency rules](../.agents/contracts/workflow.md).
+Both hosts use the [shared workflow](../.agents/commands/feature.md). The main conversation is EM: clarify requirements (PO only when needed), agree a brief plan with the user, send one Lead to implement code/tests/docs, then review the diff. No separate orchestrator or routine PO documentation approval round.
 
-## Shared sources and host adapters
+## Shared sources and hosts
 
-- `AGENTS.md` is the repository instruction source; `CLAUDE.md` is a relative symlink to it.
-- `.agents/{agents,contracts,commands,skills}/` owns shared guidance. Matching `.claude/` files are relative symlinks; edit the source, not copies.
-- `.codex/agents/*.toml` contains native metadata/model settings and points to the same role Markdown, ignoring its Claude YAML frontmatter. Keep behavioral instructions in `.agents/`.
-- Both hosts use the same `agent-docs/`, `pages/epics/`, and `docs/`. No per-host product specifications.
-- Local credentials/settings stay gitignored. Codex does not need OmniRoute. The optional Claude routing setup below is per-engineer infrastructure.
+`AGENTS.md` is shared through `CLAUDE.md`'s relative symlink. `.agents/` owns roles, contracts, commands, and skills; matching `.claude/` files are symlinks. `.codex/agents/*.toml` holds native metadata/model settings and references the same role Markdown, excluding Claude YAML. Both hosts read the same product and engineering docs. Keep credentials and local settings gitignored.
 
-Codex project roles use the [official TOML agent format](https://learn.chatgpt.com/docs/agent-configuration/subagents). Claude uses [Markdown subagents](https://code.claude.com/docs/en/sub-agents). These are host adapters, not interchangeable configuration formats.
+Codex uses the [native TOML format](https://learn.chatgpt.com/docs/agent-configuration/subagents); Claude uses [Markdown subagents](https://code.claude.com/docs/en/sub-agents). Open a fresh session after profile changes. Claude: `/feature "<description>"`. Codex: `Use the feature workflow for <description>`; AGENTS.md routes the request without requiring a native slash-menu entry.
 
-## Run
+EM speaks directly to the user and handles agent dispatch. If a subagent cannot ask the user directly, it returns `USER_QUESTION` to EM. Use the same workflow sequentially if agents are unavailable and disclose self-review. Ordinary ChatGPT without repository/tools access cannot automatically load this setup. Codex uses its configured provider; OmniRoute below is optional Claude infrastructure.
 
-Open the repository in a fresh session after changing agent profiles. In Claude Code use `/feature "<description>"`. In Codex say `Use the feature workflow for <description>`; AGENTS.md routes this to the shared command. A literal `/feature` request in Codex has the same repository meaning, but a native slash-menu entry is not required or promised.
+## Roles and effort
 
-The main conversation spawns/resumes each role and relays questions and Lead↔EM collaboration. Claude subagents do not have `AskUserQuestion`; a role returns `USER_QUESTION` and the main conversation asks you, then returns your answer. Use the same relay in Codex whenever direct user questions are unavailable. Do not depend on a host-specific task API or nested agents. If subagents are unavailable, the main conversation performs the roles sequentially and says so. Ordinary ChatGPT chat without repository/tool access cannot automatically load these files; this setup targets Codex and repository-enabled agent sessions.
-
-## Roles and routing
-
-| Role | Claude | Codex | Ownership |
+| Role | Claude profile | Codex profile | Use |
 |---|---|---|---|
-| Product Owner | `sonnet` | parent default | product requirements, scope, acceptance, all `pages/` documentation |
-| Engineering Manager | `sonnet` | parent default | requirements/code analysis, agreed approach, engineering docs outside `pages/`, code review |
+| PO | `sonnet` | parent default | new/unclear product requirements; accountable for `pages/` |
+| EM | main session; optional separate profile `sonnet` | main session; optional separate profile inherits parent | technical direction, questions, final review |
 | Lead LOW | `haiku` | `gpt-5.6-terra`/low | bounded implementation |
-| Lead MEDIUM | `sonnet` | `gpt-5.6-sol`/high | contained feature/integration work |
+| Lead MEDIUM | `sonnet` | `gpt-5.6-sol`/medium | contained feature/integration work |
 | Lead HIGH | `opus` | `gpt-5.6-sol`/xhigh | high-risk implementation |
 
-EM uses the [complexity contract](../.agents/contracts/complexity.md). Keep model selection separate from shared behavior; native model availability depends on the host/account. PO no longer writes a finished epic before handoff. EM prepares engineering documentation outside `pages/`; PO owns and updates all epics and other documentation under `pages/`. Before Lead implementation, both update affected docs from the agreed requirements and approach, marking pending work explicitly. Lead implements code/tests and reports results; it never updates docs. EM reviews the actual code, updates engineering docs, and sends the Lead's output and verified findings to PO for page updates. EM confirms both sets match the implementation before marking done, per delivered slice/PR, accepting minor disclosed polish follow-ups. Required checks and agreed behavior still matter.
+The [complexity contract](../.agents/contracts/complexity.md) scales process depth as well as Lead selection. Model availability depends on the account/host. Main EM uses the user's selected session model; the optional EM profile does not change it.
 
-Each role asks about unresolved preferences, including implementation choices with meaningful tradeoffs. Questions go straight to the user through the main conversation when needed, not through a PO↔EM loop. Prior answers carry forward. EM must obtain explicit user agreement to the brief plan before handing implementation to the complexity-selected Lead. Material plan changes require renewed agreement; any role, including Lead, can raise new questions at any time. No extra formal planning stage or repeated full-package task dispatch.
+Documentation ownership is accountability, not a write restriction. All roles may make verified factual edits within agreed scope; the Lead normally updates code and reference docs together. PO is consulted again for product ambiguity only. One writer per file; one EM review covers code and docs. No finished epic prerequisite; new feature docs still start in the first slice.
+
+The [shared contract](../.agents/contracts/workflow.md) owns question, agreement, context, and messaging rules. AGENTS.md owns change-specific verification: docs/config-only edits use relevant structural checks, while application changes retain applicable tests and lint. Small features can combine dependency-ordered slices in one PR. No unrelated tests or repeated passing checks.
+
+To evaluate changes over several comparable tasks, record available time-to-first-code-edit, total time, token usage, and material rework. Use host-reported metrics when available; do not add monitoring agents or invent missing counters. Compare similar risk levels before changing more settings.
 
 ## Optional Claude OmniRoute setup
 

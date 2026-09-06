@@ -48,25 +48,9 @@ Each slice guide links its technology standards.
 
 ### Product epics
 
-The Product Owner owns all epic pages and every other document under `pages/`. Engineering Manager owns engineering documentation outside `pages/` and coordinates page updates with PO before implementation and after code review. Lead engineers do not update documentation.
+`pages/epics/` describes observable product behavior in plain English; `agent-docs/features/` holds engineering details. PO is accountable for `pages/`, EM for engineering docs. Any role, including Lead, may update factual docs within agreed scope; EM reviews code/docs together. Product ambiguity goes to the user.
 
-`pages/epics/` holds the business-facing spec for each area of the product, published via GitHub Pages. An epic says what a user can do and why; `agent-docs/features/` stays the engineering source of truth for endpoints, types, files, and tests.
-
-| Guide | Read when |
-|---|---|
-| [Epic standards](pages/epics/EPIC-STANDARDS.md) | Writing a new epic, restructuring one, or reviewing whether one still matches the code |
-| The epic listed under [Epics](#epics) | Starting any feature request, or changing behavior a user can observe |
-
-Two rules govern every epic:
-
-- **Plain, simple English.** The audience is non-engineers. Short sentences, everyday words, no Scala/type/class/file names, no internal jargon, no unexplained abbreviations. Describe behavior the user can observe, not the implementation that produces it.
-- **Always true of the code.** Stage names, error codes, field shapes, limits, and business rules in an epic must match what the code actually does. Verify against the feature doc and the implementation before publishing — a confidently wrong epic is worse than a missing one. Field constraints are read out of the validation layer, which enforces rules in two places: the Iron predicates in `backend/domain/.../domain.scala` with the newtypes binding them in `gateway/Newtypes.scala`, **and** the validators in `validation/`, which often add a library check the predicate cannot express (JMail for email, libphonenumber for phone numbers). Read the validator first; the predicate alone is usually the looser half. Never describe what the system generates when the field is an input.
-
-A mermaid diagram after the overview is optional — add one only when a journey is tangled enough that a picture beats the prose, and keep it small. A diagram that restates steps the reader is about to read costs more space than it earns. Fenced ` ```mermaid ` blocks are rendered by `pages/_layouts/epic.html`, which epics get automatically from the `defaults` in `pages/_config.yml`.
-
-Every epic needs YAML front matter with a `title:` — Jekyll skips files without it, and the page never renders.
-
-Acronyms are spelled out on first use, listed in [the glossary](pages/glossary.md), and defined once in `pages/_includes/abbreviations.md`; each epic ends with that include, which turns every occurrence into a hover tooltip. Adding an acronym means updating both files, so the tooltip and the glossary never disagree.
+Read the affected epic for feature/behavior changes and [Epic standards](pages/epics/EPIC-STANDARDS.md) when writing or reviewing pages. Keep pages true to verified code. New epics need front matter and entries in both indexes; formatting, glossary, and validation-source rules live in Epic standards.
 
 ### Exceptional changes
 
@@ -107,18 +91,15 @@ Read every standard whose trigger matches the task:
 
 `.agents/` is canonical for shared agents, contracts, commands, and skills. `.claude/` is a real Claude-specific directory; each shared file inside it is a relative symlink to `.agents/`. Edit shared files in `.agents/`. Claude-only files/config stay directly under `.claude/`; to diverge one shared file, replace only its symlink. `.claude/settings.local.json` and `.claude/worktrees/` are local/gitignored.
 
-## Validation flow (rules, run in order, every change)
+## Validation flow
 
-1. **Feature doc first** — read the relevant `agent-docs/features/` file before coding. For a new feature, create `agent-docs/features/<feature-name>.md` in PR 1, link it under [Features](#features), and update its status/content in every slice. Never wait until the final PR. Required structure: scope/boundaries; endpoint auth/onboard/roles; flow/security/decisions; key files/config; unit/functional/integration/acceptance tests. See [Feature flow](agent-docs/features/flow/README.md).
-2. **Epic in sync** — every feature request and every change to observable behavior updates the epic it belongs to in `pages/epics/`, in the same PR. Find the related epic first; if none fits, create one from the skeleton in [Epic standards](pages/epics/EPIC-STANDARDS.md) and link it under [Epics](#epics). Epics are written in plain, simple English and must always match the code — see [Product epics](#product-epics).
-3. **Standards compliance** — read the current slice or exceptional-change guide from the [documentation router](#documentation-router) and its linked technology standards.
-4. **Tests in every PR** — write and pass the current slice's applicable tests; never defer them:
-   - **Unit** `gateway/core/.../unit` — validators, pure helpers.
-   - **Functional** `gateway/core/.../fun` — one service, effectful dependencies mocked.
-   - **Integration** `gateway/core/.../it` — one repository/client vs a real dependency; no application HTTP.
-   - **Acceptance** `gateway/it` — real gateway and dependencies over HTTP.
-5. **Lint** — run `sbt "runLint"` before done. `checkLint` is the read-only CI gate.
-6. **Docs currency** — every task fixes affected stale statements in `agent-docs/`, `pages/`, and this file, including renamed errors, types, endpoints, config keys, and files. Document new conventions. A stale doc is worse than no doc.
+Apply only the checks relevant to the change; CI gates remain unchanged.
+
+1. **Feature context** — for application changes, read the relevant feature doc before coding and the guides/standards triggered above. For a new feature, create/link its doc in the first implementation slice and update it per PR. See [Feature flow](agent-docs/features/flow/README.md) for structure and delivery order. Docs/agent-instruction edits do not need an unrelated feature doc or product epic.
+2. **Docs currency** — update affected statements in `agent-docs/`, `pages/`, and this file in the same PR. Observable behavior changes update the affected epic. Do not rewrite unchanged docs or perform a repository-wide docs audit for each task.
+3. **Relevant proof** — run the affected slice's applicable checks. Reuse existing coverage when sufficient; add/update meaningful tests for changed behavior and uncovered risk. Do not create tests for prose edits or mechanical changes merely to satisfy a quota. Unit checks cover pure logic, functional checks cover service branches, integration checks cover real repositories/clients, and acceptance checks cover gateway HTTP behavior. Required security, data-integrity, and boundary coverage remains mandatory.
+4. **Lint and scope** — run `sbt "runLint"` for Scala/Smithy/build changes. For docs or agent-configuration-only changes, use diff checks and relevant link/config parsing; skip sbt and application suites. Site templates/assets/config changes need the relevant site build/render checks. `checkLint` remains the CI gate.
+5. **No duplicate verification** — after passing checks, rerun only what subsequent changes, failures, or unresolved risks affect. Report actual results and unrun required checks; do not claim verification from a successful command that ran no relevant checks.
 
 ## Project structure
 
@@ -152,7 +133,7 @@ New epic → follow [Epic standards](pages/epics/EPIC-STANDARDS.md) and copy its
 
 ## Features
 
-Engineering-facing feature docs. New feature → [Feature flow](agent-docs/features/flow/README.md); create/link its feature doc in PR 1 per [Validation flow §1](#validation-flow-rules-run-in-order-every-change).
+Engineering-facing feature docs. New feature → [Feature flow](agent-docs/features/flow/README.md); create/link its feature doc in the first PR per [Validation flow](#validation-flow).
 
 - [User Onboarding](agent-docs/features/user-onboarding.md)
 - [User Sign in](agent-docs/features/user-signin.md)
@@ -180,4 +161,4 @@ sbt "gatewayCore/Docker/publishLocal"                   # build gateway image
 docker compose -f compose/compose.yaml up -d            # local stack: postgres, flyway, gateway, mocks
 ```
 
-`/feature "<description>"` — quick Product Owner brief → Engineering Manager handoff → one complexity-selected Lead (`LOW|MEDIUM|HIGH`) → EM review and done decision. Every role asks the user about unresolved behavior or meaningful implementation choices before implementing them; settled answers carry forward. The user must explicitly agree to EM's brief plan before Lead implementation. PO captures product requirements; EM checks them against code, resolves approach and edge-case questions, owns engineering documentation outside `pages/`, and reviews Lead code. PO owns all epics and other documentation under `pages/`. Both update their docs before implementation and after reviewed results; EM coordinates and verifies completion. Lead implements code/tests and reports results; it never updates docs. Handoffs stay compact. Follow the shared [workflow](.agents/commands/feature.md) and [interaction rules](.agents/contracts/workflow.md). In Codex, a request to run `/feature` or “use the feature workflow” means read and execute that shared command; it does not require a native slash command. Sources: `.agents/`; Claude: per-file `.claude/` symlinks; Codex: thin `.codex/agents/` adapters. Setup: [Agent pipeline](agent-docs/agent-pipeline-setup.md).
+`/feature "<description>"` — main conversation acts as EM; use PO for new/unclear product requirements → agree a brief plan with the user → one complexity-selected Lead implements code/tests/factual docs → EM reviews and finishes. Follow the [shared workflow](.agents/commands/feature.md). In Codex, `/feature` or “use the feature workflow” routes to this file without requiring a native slash-menu entry. Sources: `.agents/`; host setup: [Agent pipeline](agent-docs/agent-pipeline-setup.md).

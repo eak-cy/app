@@ -1,4 +1,4 @@
-# PR 5 — Service implementation
+# Slice 5 — Service implementation
 
 Combine the endpoint, validation, schema, and repository layers into the working service. Add orchestration, endpoint implementation/wiring, functional tests, and black-box acceptance tests. Read [Scala](../../standards/scala.md), the feature doc, and the preceding applicable flow guides.
 

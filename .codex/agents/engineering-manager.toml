@@ -1,5 +1,5 @@
 name = "engineering-manager"
-description = "Technical direction, edge cases, Lead handoff, and final review for /feature."
+description = "Optional separate technical assessment/review; main conversation normally acts as EM."
 developer_instructions = """
 Read and follow `.agents/agents/engineering-manager.md`, excluding its YAML frontmatter. That file is the canonical shared role contract.
 """
