@@ -85,6 +85,17 @@ object UserOnboardService {
           onboardStageUser = userDetailsRow.onboardStage,
           onboardStagesAllowed = OnboardStage.onboardDetailsStages,
         )
+        // Runs unconditionally, before the OTP branch, so a colliding phone number is rejected via the
+        // uq_user_details_phone_number constraint before anything else on this request happens - regardless of
+        // whether the OTP below ends up reused or freshly generated. The unique-constraint check is otherwise
+        // never race-safe to pre-check separately, so this real write both persists the details and doubles as
+        // the conflict check.
+        _ <- userDetailsRepository.updateUserDetails(
+          authedUser.userID,
+          OnboardStage.PhoneVerification,
+          Some(onboardDetailsPostRequest.fullName),
+          Some(onboardDetailsPostRequest.phoneNumber),
+        )
         instantNow    <- timeProvider.instantNow
         userOtpRowOpt <- userOtpRepository.getUserOtpByUserID(authedUser.userID, OtpType.PhoneVerification)
         (userOtpRowNew, otpExpiresInSeconds) <- userOtpRowOpt match {
@@ -107,13 +118,6 @@ object UserOnboardService {
                 authedUser.userID,
                 ActionAttemptType.PhoneVerificationVerifyOTP,
               )
-              _ <- userDetailsRepository
-                .updateUserDetails(
-                  authedUser.userID,
-                  OnboardStage.PhoneVerification,
-                  Some(onboardDetailsPostRequest.fullName),
-                  Some(onboardDetailsPostRequest.phoneNumber),
-                )
               _ <- ZIO.unlessDiscard(userOnboardConfig.isDev)(
                 twilioClient
                   .sendOtpSms(onboardDetailsPostRequest.phoneNumber.phoneNumberE164, userOtpRow.otp)

@@ -32,7 +32,7 @@ operation OnboardDetailsPost {
         request: OnboardDetailsPostRequest
     }
     output: OnboardDetailsPostResponse
-    errors: [ValidationError, Unauthorized, Forbidden, InternalServerError]
+    errors: [ValidationError, Unauthorized, Forbidden, Conflict, InternalServerError]
 }
 
 /// **Required Onboard Stage:** [`PHONE_VERIFICATION`]
