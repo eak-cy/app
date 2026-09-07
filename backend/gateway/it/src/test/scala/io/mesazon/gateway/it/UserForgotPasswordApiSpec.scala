@@ -399,6 +399,14 @@ class UserForgotPasswordApiSpec
 
         postgresClient.executeQuery(userOtpQueries.insertUserOtp(userOtpRow)).zioValue
 
+        // Should be deleted once the OTP is verified successfully
+        val userTokenRowExisting = arbitrarySample[UserTokenRow].copy(
+          userID = userDetailsRow.userID,
+          tokenType = TokenType.RefreshToken,
+        )
+
+        postgresClient.executeQuery(userTokenQueries.insertUserToken(userTokenRowExisting)).zioValue
+
         val forgotPasswordVerifyOTPPostResponse =
           gatewayClient
             .forgotPasswordVerifyOTPPost[smithy.InternalServerError](
@@ -429,9 +437,17 @@ class UserForgotPasswordApiSpec
 
         val userTokenRowsAll = postgresClient.executeQuery(userTokenQueries.getAllUserTokensTesting).zioValue
 
+        val authedUserResetPassword = jwtService
+          .verifyResetPasswordToken(
+            ResetPasswordToken.assume(forgotPasswordVerifyOTPPostResponse.body.value.resetPasswordToken)
+          )
+          .zioValue
+
         userTokenRowsAll should have size 1
         userTokenRowsAll.head.userID shouldBe userDetailsRow.userID
         userTokenRowsAll.head.tokenType shouldBe TokenType.ResetPasswordToken
+        userTokenRowsAll.head.tokenID shouldBe authedUserResetPassword.tokenID
+        userTokenRowsAll.head.tokenID should not be userTokenRowExisting.tokenID
 
         val userCredentialsRowsAll =
           postgresClient.executeQuery(userCredentialsQueries.getAllUserCredentialsTesting).zioValue

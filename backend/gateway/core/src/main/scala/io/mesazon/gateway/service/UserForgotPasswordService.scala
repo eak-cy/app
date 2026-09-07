@@ -201,6 +201,7 @@ object UserForgotPasswordService {
                 s"Wrong OTP provided for OTP ID [${forgotPasswordVerifyOTPPostRequest.otpID}] and OTP type [${OtpType.ForgotPassword}]"
               )
             )
+        _                <- userTokenRepository.deleteAllUserTokens(userDetailsRow.userID)
         resetPasswordJwt <- jwtService.generateResetPasswordToken(userDetailsRow.userID)
         _                <- userTokenRepository
           .upsertUserToken(
