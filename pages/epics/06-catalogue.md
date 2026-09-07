@@ -205,7 +205,7 @@ Response is empty. A successful upload answers with nothing but a success status
 | --- | --- |
 | 1. User opens the catalogue | - Every active item in the organization is returned, each with its name, status, and a picture if it has one |
 | 2. An item has no image | - It appears in the list with nothing in place of a picture |
-| 3. The organization has archived items | - They do not appear, and there is no way to list them again — the same gap as [Customer Book gap 4]({{ site.baseurl }}{% link epics/05-customer-book.md %}#4-archiving-is-final-and-archived-customers-cannot-be-found-again) |
+| 3. The organization has archived items | - They do not appear, and there is no way to list them again — the same gap as [Customer Book gap 3]({{ site.baseurl }}{% link epics/05-customer-book.md %}#3-archiving-is-final-and-archived-customers-cannot-be-found-again) |
 | 4. The organization has no items yet | - An empty list is returned |
 
 #### Requirements
@@ -260,7 +260,7 @@ Nothing changes. This step only reads.
 | --- | --- |
 | 1. User opens an item that exists | - Its name, unit, price if any, and picture if any are returned |
 | 2. User opens an item that has been archived | - Its details are still returned. Archiving hides an item from the list, not from a direct look-up |
-| 3. User opens an item that does not exist | - Reported as a server error rather than "not found" — the same gap as [Customer Book gap 2]({{ site.baseurl }}{% link epics/05-customer-book.md %}#2-looking-up-a-customer-that-is-not-there-is-reported-as-a-server-error) |
+| 3. User opens an item that does not exist | - Reported as a server error rather than "not found" — the same gap as [Customer Book gap 1]({{ site.baseurl }}{% link epics/05-customer-book.md %}#1-looking-up-a-customer-that-is-not-there-is-reported-as-a-server-error) |
 
 #### Requirements
 
@@ -313,7 +313,7 @@ Nothing changes. This step only reads.
 | --- | --- |
 | 1. User changes an active item's details | - The change is saved - Fields left out of the request are left as they were |
 | 2. User renames an item to a name another active item already has | - Rejected as a conflict |
-| 3. User changes an item that has been archived, or does not exist | - Nothing happens, and it is reported as successful — the same gap as [Customer Book gap 3]({{ site.baseurl }}{% link epics/05-customer-book.md %}#3-changes-to-an-archived-customer-are-silently-discarded) |
+| 3. User changes an item that has been archived, or does not exist | - Nothing happens, and it is reported as successful — the same gap as [Customer Book gap 2]({{ site.baseurl }}{% link epics/05-customer-book.md %}#2-changes-to-an-archived-customer-are-silently-discarded) |
 | 4. A member with the ordinary user role tries to make a change | - Rejected |
 
 #### Requirements
@@ -365,7 +365,7 @@ Response is empty. A successful change answers with nothing but a success status
 | --- | --- |
 | 1. User archives an active item | - The item becomes archived and leaves the catalogue - Its name becomes free for a new active item to use - Its image, if any, is kept |
 | 2. User archives an item that is already archived, or does not exist | - Nothing happens, and it is reported as successful |
-| 3. User wants an archived item back | - Not possible. There is no way to reverse archiving — the same gap as [Customer Book gap 4]({{ site.baseurl }}{% link epics/05-customer-book.md %}#4-archiving-is-final-and-archived-customers-cannot-be-found-again) |
+| 3. User wants an archived item back | - Not possible. There is no way to reverse archiving — the same gap as [Customer Book gap 3]({{ site.baseurl }}{% link epics/05-customer-book.md %}#3-archiving-is-final-and-archived-customers-cannot-be-found-again) |
 
 #### Requirements
 

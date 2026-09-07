@@ -160,7 +160,45 @@ The shapes used above and throughout this epic:
 
 **Response**
 
-Response is empty. A successful add answers with nothing but a success status — including no identifier for what was just created. See [gap 1](#1-adding-a-customer-tells-you-nothing-about-what-was-added).
+A successful add answers with the row(s) just created. Adding one person or one business returns that customer's full stored details — for a business, including the generated identifier of every inline contact. Adding a batch of one kind, or a mixed batch of both, returns a summary per customer instead, in the order it was sent — individuals first, then businesses, for a mixed batch.
+
+**Response — one CustomerIndividual**
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Customer ID | `UUID` | Canonical 36-character form | ✅ | The new customer's identifier |
+| Full Name | `String` | — | ✅ | The person's name |
+| Emails | `EmailEntry[]` | May be empty | ✅ | Every recorded address, each marked default or not |
+| Phone Numbers | `PhoneNumberEntry[]` | May be empty | ✅ | Every recorded number, each marked default or not |
+| Address Line 1, Address Line 2, City, Postal Code, Country | `String` | — | ❌ | Present only if recorded |
+
+**Response — one CustomerBusiness**
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Customer ID | `UUID` | Canonical 36-character form | ✅ | The new customer's identifier |
+| Business Name | `String` | — | ✅ | The company's name |
+| Emails | `EmailEntry[]` | May be empty | ✅ | Every recorded address, each marked default or not |
+| Tax ID | `String` | — | ❌ | Present only if recorded |
+| Phone Numbers | `PhoneNumberEntry[]` | May be empty | ✅ | Every recorded number, each marked default or not |
+| Address Line 1, Address Line 2, City, Postal Code, Country | `String` | — | ❌ | Present only if recorded |
+| Customer Business Contacts | `BusinessContactCreated[]` | May be empty | ✅ | Every contact just stored, each carrying its new identifier |
+
+**BusinessContactCreated**
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Customer Business Contact ID | `UUID` | Canonical 36-character form | ✅ | The new contact's identifier |
+| Full Name | `String` | — | ✅ | The contact's name |
+| Role | `String` | — | ❌ | Present only if recorded |
+| Email | `String` | — | ❌ | Present only if recorded |
+| Phone Number | `PhoneNumber` | — | ❌ | Present only if recorded |
+
+**Response — a batch of one kind, or a mixed batch**
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Customers | `CustomerSummary[]` | Same order as sent | ✅ | One summary per customer just added. See **CustomerSummary** in [step 2](#2-user-browses-the-customer-book) |
 
 **Outcome**
 
@@ -192,7 +230,7 @@ Response is empty. A successful add answers with nothing but a success status �
 | **Scenarios** | **Requirements** |
 | --- | --- |
 | 1. User opens the customer book | - Every active customer in the organization is returned - Each entry says whether it is a person or a business - Sorted by name, ignoring capitalisation |
-| 2. The organization has archived customers | - Archived customers do not appear - There is no way to list them again - See [gap 4](#4-archiving-is-final-and-archived-customers-cannot-be-found-again) |
+| 2. The organization has archived customers | - Archived customers do not appear - There is no way to list them again - See [gap 3](#3-archiving-is-final-and-archived-customers-cannot-be-found-again) |
 | 3. The organization has no customers yet | - An empty list is returned |
 
 #### Requirements
@@ -248,7 +286,7 @@ Nothing changes. This step only reads.
 | --- | --- |
 | 1. User opens a customer that exists | - Their full details are returned, including all contact details and the address |
 | 2. User opens a customer that has been archived | - Their details are still returned. Archiving hides a customer from the list, not from a direct look-up |
-| 3. User opens a customer that does not exist, or asks for a person using the business screen | - Reported as a server error rather than "not found" — see [gap 2](#2-looking-up-a-customer-that-is-not-there-is-reported-as-a-server-error) |
+| 3. User opens a customer that does not exist, or asks for a person using the business screen | - Reported as a server error rather than "not found" — see [gap 1](#1-looking-up-a-customer-that-is-not-there-is-reported-as-a-server-error) |
 
 #### Requirements
 
@@ -287,7 +325,7 @@ There are two answers, one per kind, and the caller gets whichever they asked fo
 | Phone Numbers | `PhoneNumberEntry[]` | May be empty | ✅ | Every recorded number, each marked default or not |
 | Address Line 1, Address Line 2, City, Postal Code, Country | `String` | — | ❌ | Present only if recorded |
 
-Neither answer includes the business's contacts, and neither says whether the customer is archived. See [gap 3](#3-changes-to-an-archived-customer-are-silently-discarded).
+Neither answer includes the business's contacts, and neither says whether the customer is archived. See [gap 2](#2-changes-to-an-archived-customer-are-silently-discarded).
 
 **Outcome**
 
@@ -315,7 +353,7 @@ Nothing changes. This step only reads.
 | --- | --- |
 | 1. User changes an active customer's details | - The change is saved - Email and phone lists are replaced wholesale by whatever is sent - Fields left out are left as they were |
 | 2. User renames a customer to a name another active customer of the same kind already has | - Rejected as a conflict |
-| 3. User changes a customer that has been archived | - Nothing happens, and the change is reported as successful - See [gap 3](#3-changes-to-an-archived-customer-are-silently-discarded) |
+| 3. User changes a customer that has been archived | - Nothing happens, and the change is reported as successful - See [gap 2](#2-changes-to-an-archived-customer-are-silently-discarded) |
 | 4. User changes a customer that does not exist | - Nothing happens, and it is reported as successful |
 | 5. A member with the ordinary user role tries to make a change | - Rejected |
 
@@ -355,7 +393,7 @@ Neither form touches the business's contacts. Those are managed on their own, in
 
 **Response**
 
-Response is empty. A successful change answers with nothing but a success status — and so does a change that quietly did nothing, which is what makes [gap 3](#3-changes-to-an-archived-customer-are-silently-discarded) hard to notice.
+Response is empty. A successful change answers with nothing but a success status — and so does a change that quietly did nothing, which is what makes [gap 2](#2-changes-to-an-archived-customer-are-silently-discarded) hard to notice.
 
 **Outcome**
 
@@ -388,7 +426,7 @@ Response is empty. A successful change answers with nothing but a success status
 | 2. User adds a contact whose email or phone number another contact at that business already has | - Rejected as a conflict |
 | 3. User adds a contact with no email and no phone number | - Accepted. Any number of contacts may have neither |
 | 4. User removes contacts | - The named contacts are deleted outright - Unlike customers, contacts are not archived |
-| 5. User adds or removes contacts on an archived or missing business | - Nothing happens, and it is reported as successful - See [gap 3](#3-changes-to-an-archived-customer-are-silently-discarded) |
+| 5. User adds or removes contacts on an archived or missing business | - Nothing happens, and it is reported as successful - See [gap 2](#2-changes-to-an-archived-customer-are-silently-discarded) |
 
 #### Requirements
 
@@ -454,7 +492,7 @@ Response is empty for both adding and removing.
 | --- | --- |
 | 1. User archives an active customer | - The customer becomes archived - They disappear from the customer book - Their contacts are kept - Their name becomes free for a new active customer of the same kind |
 | 2. User archives a customer that is already archived, or does not exist | - Nothing happens, and it is reported as successful |
-| 3. User wants an archived customer back | - Not possible. There is no way to reverse archiving - See [gap 4](#4-archiving-is-final-and-archived-customers-cannot-be-found-again) |
+| 3. User wants an archived customer back | - Not possible. There is no way to reverse archiving - See [gap 3](#3-archiving-is-final-and-archived-customers-cannot-be-found-again) |
 
 #### Requirements
 
@@ -494,15 +532,7 @@ Response is empty, whether the customer was archived just now, was already archi
 
 Everything above describes what the product does today. Nothing in this section exists yet; each one needs a product answer before it can be built.
 
-#### 1. Adding a customer tells you nothing about what was added
-
-Adding a customer — one, a batch, or a business with its contacts — answers with success and nothing else. No identifier comes back.
-
-So the app cannot open what the person just created, cannot link to it, and cannot show it in place. The only way to find a new customer is to fetch the whole book again and look for the name, which is also the only way to discover the identifier of a contact that was just added.
-
-**To decide:** whether adding should return the new customer's identifier — and for a batch, the identifiers in the order they were sent.
-
-#### 2. Looking up a customer that is not there is reported as a server error
+#### 1. Looking up a customer that is not there is reported as a server error
 
 Opening a customer that does not exist, or asking for a person through the business screen, comes back as a server error rather than "not found".
 
@@ -512,7 +542,7 @@ This is the same shape as the missing-record errors in [User Onboarding]({{ site
 
 **To decide:** whether a missing or wrong-kind customer should be a plain "not found".
 
-#### 3. Changes to an archived customer are silently discarded
+#### 2. Changes to an archived customer are silently discarded
 
 Changing an archived customer, or adding and removing its contacts, does nothing at all — and reports success. The same happens for a customer that does not exist.
 
@@ -522,7 +552,7 @@ The reasoning is that archiving already achieves what the edit wanted. That hold
 
 **To decide:** whether editing an archived customer should say so, and whether the screen should show that a customer is archived at all — today nothing in the answer reveals it.
 
-#### 4. Archiving is final, and archived customers cannot be found again
+#### 3. Archiving is final, and archived customers cannot be found again
 
 Archiving cannot be undone, and the customer book lists only active customers. There is no way to browse or search archived ones.
 
@@ -530,7 +560,7 @@ Together that means an accidental archive is unrecoverable in practice. The reco
 
 **To decide:** whether archiving can be reversed, and whether archived customers should be listable. If reversing is allowed, restoring a customer whose name has since been taken by a new active one needs an answer.
 
-#### 5. Nothing prevents a contact being attached to a person
+#### 4. Nothing prevents a contact being attached to a person
 
 Contacts belong to businesses. That is a rule the service applies, not one the stored data enforces — the link only requires the contact and the customer to be in the same organization, not that the customer is a business.
 
