@@ -21,73 +21,166 @@ object CustomerBookService {
     override def insertCustomerIndividualPost(
         organizationID: UUID,
         insertCustomerIndividualPostRequestSmithy: smithy.InsertCustomerIndividualPostRequest,
-    ): ServiceTask[Unit] = for {
+    ): ServiceTask[smithy.InsertCustomerIndividualPostResponse] = for {
       insertCustomerIndividualPostRequest <- customerBookRequestValidator.validatedInsertCustomerIndividualPostRequest(
         insertCustomerIndividualPostRequestSmithy
       )
-      _ <- customerBookRepository.insertCustomerIndividual(
+      customerIndividualDetailsRow <- customerBookRepository.insertCustomerIndividual(
         OrganizationID(organizationID),
         insertCustomerIndividualPostRequest.transformInto[InsertCustomerIndividualInput],
       )
-    } yield ()
+    } yield smithy.InsertCustomerIndividualPostResponse(
+      customerID = customerIndividualDetailsRow.customerID.value,
+      fullName = customerIndividualDetailsRow.fullName.value,
+      emails = customerIndividualDetailsRow.emails.map(customerEmailEntryInput =>
+        smithy.CustomerEmailEntryRequest(
+          email = customerEmailEntryInput.email.value,
+          isDefault = customerEmailEntryInput.isDefault,
+        )
+      ),
+      phoneNumbers = customerIndividualDetailsRow.phoneNumbers.map(customerPhoneNumberEntryInput =>
+        smithy.CustomerPhoneNumberEntryRequest(
+          phoneNumber = smithy.PhoneNumberRequest(
+            phoneNationalNumber = customerPhoneNumberEntryInput.phoneNumber.value.phoneNationalNumber.value,
+            phoneCountryCode = customerPhoneNumberEntryInput.phoneNumber.value.phoneCountryCode.value,
+          ),
+          isDefault = customerPhoneNumberEntryInput.isDefault,
+        )
+      ),
+      addressLine1 = customerIndividualDetailsRow.addressLine1.map(_.value),
+      addressLine2 = customerIndividualDetailsRow.addressLine2.map(_.value),
+      city = customerIndividualDetailsRow.city.map(_.value),
+      postalCode = customerIndividualDetailsRow.postalCode.map(_.value),
+      country = customerIndividualDetailsRow.country.map(_.value),
+    )
 
     /** HTTP POST /insert/customer-individuals */
     override def insertCustomerIndividualsPost(
         organizationID: UUID,
         insertCustomerIndividualsPostRequestSmithy: smithy.InsertCustomerIndividualsPostRequest,
-    ): ServiceTask[Unit] = for {
+    ): ServiceTask[smithy.InsertCustomerIndividualsPostResponse] = for {
       insertCustomerIndividualsPostRequest <-
         customerBookRequestValidator.validatedInsertCustomerIndividualsPostRequest(
           insertCustomerIndividualsPostRequestSmithy
         )
-      _ <- customerBookRepository.insertCustomerIndividuals(
+      customerIndividualDetailsRows <- customerBookRepository.insertCustomerIndividuals(
         OrganizationID(organizationID),
         insertCustomerIndividualsPostRequest.customerIndividuals.map(_.transformInto[InsertCustomerIndividualInput]),
       )
-    } yield ()
+    } yield smithy.InsertCustomerIndividualsPostResponse(
+      customerIndividuals = customerIndividualDetailsRows.map(customerIndividualDetailsRow =>
+        smithy.GetCustomer(
+          customerID = customerIndividualDetailsRow.customerID.value,
+          name = customerIndividualDetailsRow.fullName.value,
+          customerType = customerTypeFromDomainToSmithy(CustomerType.Individual),
+        )
+      )
+    )
 
     /** HTTP POST /insert/customer-business */
     override def insertCustomerBusinessPost(
         organizationID: UUID,
         insertCustomerBusinessPostRequestSmithy: smithy.InsertCustomerBusinessPostRequest,
-    ): ServiceTask[Unit] = for {
+    ): ServiceTask[smithy.InsertCustomerBusinessPostResponse] = for {
       insertCustomerBusinessPostRequest <- customerBookRequestValidator.validatedInsertCustomerBusinessPostRequest(
         insertCustomerBusinessPostRequestSmithy
       )
-      _ <- customerBookRepository.insertCustomerBusiness(
+      customerBusinessInsertRow <- customerBookRepository.insertCustomerBusiness(
         OrganizationID(organizationID),
         insertCustomerBusinessPostRequest.transformInto[InsertCustomerBusinessInput],
       )
-    } yield ()
+    } yield smithy.InsertCustomerBusinessPostResponse(
+      customerID = customerBusinessInsertRow.customerBusinessDetailsRow.customerID.value,
+      businessName = customerBusinessInsertRow.customerBusinessDetailsRow.businessName.value,
+      emails = customerBusinessInsertRow.customerBusinessDetailsRow.emails.map(customerEmailEntryInput =>
+        smithy.CustomerEmailEntryRequest(
+          email = customerEmailEntryInput.email.value,
+          isDefault = customerEmailEntryInput.isDefault,
+        )
+      ),
+      taxID = customerBusinessInsertRow.customerBusinessDetailsRow.taxID.map(_.value),
+      phoneNumbers =
+        customerBusinessInsertRow.customerBusinessDetailsRow.phoneNumbers.map(customerPhoneNumberEntryInput =>
+          smithy.CustomerPhoneNumberEntryRequest(
+            phoneNumber = smithy.PhoneNumberRequest(
+              phoneNationalNumber = customerPhoneNumberEntryInput.phoneNumber.value.phoneNationalNumber.value,
+              phoneCountryCode = customerPhoneNumberEntryInput.phoneNumber.value.phoneCountryCode.value,
+            ),
+            isDefault = customerPhoneNumberEntryInput.isDefault,
+          )
+        ),
+      addressLine1 = customerBusinessInsertRow.customerBusinessDetailsRow.addressLine1.map(_.value),
+      addressLine2 = customerBusinessInsertRow.customerBusinessDetailsRow.addressLine2.map(_.value),
+      city = customerBusinessInsertRow.customerBusinessDetailsRow.city.map(_.value),
+      postalCode = customerBusinessInsertRow.customerBusinessDetailsRow.postalCode.map(_.value),
+      country = customerBusinessInsertRow.customerBusinessDetailsRow.country.map(_.value),
+      customerBusinessContacts = customerBusinessInsertRow.customerBusinessContactRows.map(customerBusinessContactRow =>
+        smithy.InsertCustomerBusinessContactResponse(
+          customerBusinessContactID = customerBusinessContactRow.customerBusinessContactID.value,
+          fullName = customerBusinessContactRow.fullName.value,
+          role = customerBusinessContactRow.role.map(_.value),
+          email = customerBusinessContactRow.email.map(_.value),
+          phoneNumber = customerBusinessContactRow.phoneNumber.map(customerPhoneNumber =>
+            smithy.PhoneNumberRequest(
+              phoneNationalNumber = customerPhoneNumber.value.phoneNationalNumber.value,
+              phoneCountryCode = customerPhoneNumber.value.phoneCountryCode.value,
+            )
+          ),
+        )
+      ),
+    )
 
     /** HTTP POST /insert/customer-businesses */
     override def insertCustomerBusinessesPost(
         organizationID: UUID,
         insertCustomerBusinessesPostRequestSmithy: smithy.InsertCustomerBusinessesPostRequest,
-    ): ServiceTask[Unit] = for {
+    ): ServiceTask[smithy.InsertCustomerBusinessesPostResponse] = for {
       insertCustomerBusinessesPostRequest <- customerBookRequestValidator.validatedInsertCustomerBusinessesPostRequest(
         insertCustomerBusinessesPostRequestSmithy
       )
-      _ <- customerBookRepository.insertCustomerBusinesses(
+      customerBusinessInsertRows <- customerBookRepository.insertCustomerBusinesses(
         OrganizationID(organizationID),
         insertCustomerBusinessesPostRequest.customerBusinesses.map(_.transformInto[InsertCustomerBusinessInput]),
       )
-    } yield ()
+    } yield smithy.InsertCustomerBusinessesPostResponse(
+      customerBusinesses = customerBusinessInsertRows.map(customerBusinessInsertRow =>
+        smithy.GetCustomer(
+          customerID = customerBusinessInsertRow.customerBusinessDetailsRow.customerID.value,
+          name = customerBusinessInsertRow.customerBusinessDetailsRow.businessName.value,
+          customerType = customerTypeFromDomainToSmithy(CustomerType.Business),
+        )
+      )
+    )
 
     /** HTTP POST /insert/customers */
     override def insertCustomersPost(
         organizationID: UUID,
         insertCustomersPostRequestSmithy: smithy.InsertCustomersPostRequest,
-    ): ServiceTask[Unit] = for {
+    ): ServiceTask[smithy.InsertCustomersPostResponse] = for {
       insertCustomersPostRequest <- customerBookRequestValidator.validatedInsertCustomersPostRequest(
         insertCustomersPostRequestSmithy
       )
-      _ <- customerBookRepository.insertCustomers(
+      insertCustomersResult <- customerBookRepository.insertCustomers(
         OrganizationID(organizationID),
         insertCustomersPostRequest.customerIndividuals.map(_.transformInto[InsertCustomerIndividualInput]),
         insertCustomersPostRequest.customerBusinesses.map(_.transformInto[InsertCustomerBusinessInput]),
       )
-    } yield ()
+    } yield smithy.InsertCustomersPostResponse(
+      customers = insertCustomersResult.customerIndividualDetailsRows.map(customerIndividualDetailsRow =>
+        smithy.GetCustomer(
+          customerID = customerIndividualDetailsRow.customerID.value,
+          name = customerIndividualDetailsRow.fullName.value,
+          customerType = customerTypeFromDomainToSmithy(CustomerType.Individual),
+        )
+      ) ++
+        insertCustomersResult.customerBusinessInsertRows.map(customerBusinessInsertRow =>
+          smithy.GetCustomer(
+            customerID = customerBusinessInsertRow.customerBusinessDetailsRow.customerID.value,
+            name = customerBusinessInsertRow.customerBusinessDetailsRow.businessName.value,
+            customerType = customerTypeFromDomainToSmithy(CustomerType.Business),
+          )
+        )
+    )
 
     /** HTTP PUT /update/customer-individual */
     override def updateCustomerIndividualPut(
@@ -278,7 +371,7 @@ object CustomerBookService {
       override def insertCustomerIndividualPost(
           organizationID: UUID,
           insertCustomerIndividualPostRequestSmithy: smithy.InsertCustomerIndividualPostRequest,
-      ): Task[Unit] =
+      ): Task[smithy.InsertCustomerIndividualPostResponse] =
         HttpErrorHandler.errorResponseHandler(
           service.insertCustomerIndividualPost(organizationID, insertCustomerIndividualPostRequestSmithy)
         )
@@ -287,7 +380,7 @@ object CustomerBookService {
       override def insertCustomerIndividualsPost(
           organizationID: UUID,
           insertCustomerIndividualsPostRequestSmithy: smithy.InsertCustomerIndividualsPostRequest,
-      ): Task[Unit] =
+      ): Task[smithy.InsertCustomerIndividualsPostResponse] =
         HttpErrorHandler.errorResponseHandler(
           service.insertCustomerIndividualsPost(organizationID, insertCustomerIndividualsPostRequestSmithy)
         )
@@ -296,7 +389,7 @@ object CustomerBookService {
       override def insertCustomerBusinessPost(
           organizationID: UUID,
           insertCustomerBusinessPostRequestSmithy: smithy.InsertCustomerBusinessPostRequest,
-      ): Task[Unit] =
+      ): Task[smithy.InsertCustomerBusinessPostResponse] =
         HttpErrorHandler.errorResponseHandler(
           service.insertCustomerBusinessPost(organizationID, insertCustomerBusinessPostRequestSmithy)
         )
@@ -305,7 +398,7 @@ object CustomerBookService {
       override def insertCustomerBusinessesPost(
           organizationID: UUID,
           insertCustomerBusinessesPostRequestSmithy: smithy.InsertCustomerBusinessesPostRequest,
-      ): Task[Unit] =
+      ): Task[smithy.InsertCustomerBusinessesPostResponse] =
         HttpErrorHandler.errorResponseHandler(
           service.insertCustomerBusinessesPost(organizationID, insertCustomerBusinessesPostRequestSmithy)
         )
@@ -314,7 +407,7 @@ object CustomerBookService {
       override def insertCustomersPost(
           organizationID: UUID,
           insertCustomersPostRequestSmithy: smithy.InsertCustomersPostRequest,
-      ): Task[Unit] =
+      ): Task[smithy.InsertCustomersPostResponse] =
         HttpErrorHandler.errorResponseHandler(
           service.insertCustomersPost(organizationID, insertCustomersPostRequestSmithy)
         )

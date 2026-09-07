@@ -44,13 +44,13 @@ Smithy JSON requests are limited to 5 MiB by `HttpApp.SmithyMaxEntitySize`.
 | GET | `/get/customer-individual/{customerID}` | `GetCustomerIndividualGet` | individual details |
 | GET | `/get/customer-business/{customerID}` | `GetCustomerBusinessGet` | business details |
 | GET | `/get/customers` | `GetCustomersGet` | active summaries |
-| POST | `/insert/customer-individual` | `InsertCustomerIndividualPost` | one individual |
-| POST | `/insert/customer-individuals` | `InsertCustomerIndividualsPost` | atomic batch |
+| POST | `/insert/customer-individual` | `InsertCustomerIndividualPost` | one individual, returns its full row |
+| POST | `/insert/customer-individuals` | `InsertCustomerIndividualsPost` | atomic batch, returns a summary per row in request order |
 | PUT | `/update/customer-individual` | `UpdateCustomerIndividualPut` | update active individual |
-| POST | `/insert/customer-business` | `InsertCustomerBusinessPost` | one business + inline contacts |
-| POST | `/insert/customer-businesses` | `InsertCustomerBusinessesPost` | atomic batch |
+| POST | `/insert/customer-business` | `InsertCustomerBusinessPost` | one business + inline contacts, returns the full row incl. generated contact IDs |
+| POST | `/insert/customer-businesses` | `InsertCustomerBusinessesPost` | atomic batch, returns a summary per row in request order |
 | PUT | `/update/customer-business` | `UpdateCustomerBusinessPut` | update active business |
-| POST | `/insert/customers` | `InsertCustomersPost` | atomic mixed batch |
+| POST | `/insert/customers` | `InsertCustomersPost` | atomic mixed batch, returns individual summaries then business summaries, each in request order |
 | PUT | `/add/customer-business-contacts` | `AddCustomerBusinessContactsPut` | append contacts |
 | PUT | `/remove/customer-business-contacts` | `RemoveCustomerBusinessContactsPut` | hard-delete contacts |
 | PUT | `/archive/customer` | `ArchiveCustomerPut` | archive either type |
@@ -69,6 +69,7 @@ Error sets:
 - Insert individual: `customer(type=INDIVIDUAL,status=Active,tax_id=NULL)`.
 - Insert business: `customer(type=BUSINESS,status=Active)` plus inline contacts in the same transaction.
 - Batch/mixed insert: multi-row statements, one `transactionOrWiden`, all-or-nothing. IDs/timestamps are generated in the repository.
+- All 5 insert operations return `200` with the row(s) just persisted instead of `204`: repository insert methods return `CustomerIndividualDetailsRow`/`CustomerBusinessDetailsRow` (+ contact rows, paired via a named tuple `CustomerBusinessInsertRow`) rather than bare IDs, and the service maps them into per-operation response shapes. Singular individual/business inserts return the full row; batch/mixed inserts return a `GetCustomer`-shaped summary (`customerID`, `name`, `customerType`) per item in request order — for the mixed endpoint, individuals then businesses.
 - Update: one type- and `Active`-filtered update. Required email/phone lists always overwrite (`Some(list)`); optional scalars use `...OptUpdate` (absent = unchanged).
 - Add/remove contacts: transaction first checks `customerActiveExists`; archived/absent parent → silent `204` no-op.
 - Archive: type-independent `Active → Archived`; missing/already archived → silent `204`; retains contacts. Partial uniqueness frees the name.

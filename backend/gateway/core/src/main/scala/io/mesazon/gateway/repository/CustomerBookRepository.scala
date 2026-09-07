@@ -18,12 +18,12 @@ trait CustomerBookRepository {
   def insertCustomerIndividual(
       organizationID: OrganizationID,
       insertCustomerIndividualInput: InsertCustomerIndividualInput,
-  ): IO[ServiceError, CustomerID]
+  ): IO[ServiceError, CustomerIndividualDetailsRow]
 
   def insertCustomerIndividuals(
       organizationID: OrganizationID,
       insertCustomerIndividualInputs: List[InsertCustomerIndividualInput],
-  ): IO[ServiceError, List[CustomerID]]
+  ): IO[ServiceError, List[CustomerIndividualDetailsRow]]
 
   def updateCustomerIndividual(
       organizationID: OrganizationID,
@@ -41,12 +41,12 @@ trait CustomerBookRepository {
   def insertCustomerBusiness(
       organizationID: OrganizationID,
       insertCustomerBusinessInput: InsertCustomerBusinessInput,
-  ): IO[ServiceError, CustomerID]
+  ): IO[ServiceError, CustomerBusinessInsertRow]
 
   def insertCustomerBusinesses(
       organizationID: OrganizationID,
       insertCustomerBusinessInputs: List[InsertCustomerBusinessInput],
-  ): IO[ServiceError, List[CustomerID]]
+  ): IO[ServiceError, List[CustomerBusinessInsertRow]]
 
   def updateCustomerBusiness(
       organizationID: OrganizationID,
@@ -66,7 +66,7 @@ trait CustomerBookRepository {
       organizationID: OrganizationID,
       insertCustomerIndividualInputs: List[InsertCustomerIndividualInput],
       insertCustomerBusinessInputs: List[InsertCustomerBusinessInput],
-  ): IO[ServiceError, List[CustomerID]]
+  ): IO[ServiceError, InsertCustomersResult]
 
   def addCustomerBusinessContacts(
       organizationID: OrganizationID,
@@ -143,6 +143,16 @@ object CustomerBookRepository {
       customerBusinessContacts: List[CustomerBusinessContactInput],
   )
 
+  type CustomerBusinessInsertRow = (
+      customerBusinessDetailsRow: CustomerBusinessDetailsRow,
+      customerBusinessContactRows: List[CustomerBusinessContactRow],
+  )
+
+  type InsertCustomersResult = (
+      customerIndividualDetailsRows: List[CustomerIndividualDetailsRow],
+      customerBusinessInsertRows: List[CustomerBusinessInsertRow],
+  )
+
   private final class CustomerBookRepositoryImpl(
       database: DatabaseOps.ServiceOps[Transactor[Task]],
       customerBookQueries: CustomerBookQueries,
@@ -153,7 +163,7 @@ object CustomerBookRepository {
     override def insertCustomerIndividual(
         organizationID: OrganizationID,
         insertCustomerIndividualInput: InsertCustomerIndividualInput,
-    ): IO[ServiceError, CustomerID] = for {
+    ): IO[ServiceError, CustomerIndividualDetailsRow] = for {
       instantNow <- timeProvider.instantNow
       customerID <- generateCustomerID
       customerIndividualDetailsRow = buildCustomerIndividualDetailsRow(
@@ -172,12 +182,12 @@ object CustomerBookRepository {
             uniqueConstraintViolationMessage,
           )
         )
-    } yield customerID
+    } yield customerIndividualDetailsRow
 
     override def insertCustomerIndividuals(
         organizationID: OrganizationID,
         insertCustomerIndividualInputs: List[InsertCustomerIndividualInput],
-    ): IO[ServiceError, List[CustomerID]] = for {
+    ): IO[ServiceError, List[CustomerIndividualDetailsRow]] = for {
       instantNow            <- timeProvider.instantNow
       customerIDsWithInputs <- ZIO.foreach(insertCustomerIndividualInputs)(input =>
         generateCustomerID.map(customerID => (customerID = customerID, input = input))
@@ -200,7 +210,7 @@ object CustomerBookRepository {
             uniqueConstraintViolationMessage,
           )
         )
-    } yield customerIDsWithInputs.map(_.customerID)
+    } yield customerIndividualDetailsRows
 
     override def updateCustomerIndividual(
         organizationID: OrganizationID,
@@ -242,7 +252,7 @@ object CustomerBookRepository {
     override def insertCustomerBusiness(
         organizationID: OrganizationID,
         insertCustomerBusinessInput: InsertCustomerBusinessInput,
-    ): IO[ServiceError, CustomerID] = for {
+    ): IO[ServiceError, CustomerBusinessInsertRow] = for {
       instantNow                  <- timeProvider.instantNow
       customerID                  <- generateCustomerID
       customerBusinessContactRows <- buildCustomerBusinessContactRows(
@@ -270,39 +280,46 @@ object CustomerBookRepository {
             uniqueConstraintViolationMessage,
           )
         )
-    } yield customerID
+    } yield (
+      customerBusinessDetailsRow = customerBusinessDetailsRow,
+      customerBusinessContactRows = customerBusinessContactRows,
+    )
 
     override def insertCustomerBusinesses(
         organizationID: OrganizationID,
         insertCustomerBusinessInputs: List[InsertCustomerBusinessInput],
-    ): IO[ServiceError, List[CustomerID]] = for {
+    ): IO[ServiceError, List[CustomerBusinessInsertRow]] = for {
       instantNow            <- timeProvider.instantNow
       customerIDsWithInputs <- ZIO.foreach(insertCustomerBusinessInputs)(input =>
         generateCustomerID.map(customerID => (customerID = customerID, input = input))
       )
-      customerBusinessDetailsRows = customerIDsWithInputs.map(customerIDWithInput =>
-        buildCustomerBusinessDetailsRow(
+      customerBusinessInsertRows <- ZIO.foreach(customerIDsWithInputs)(customerIDWithInput =>
+        buildCustomerBusinessContactRows(
           organizationID,
           customerIDWithInput.customerID,
-          customerIDWithInput.input,
+          customerIDWithInput.input.customerBusinessContacts,
           instantNow,
-        )
-      )
-      customerBusinessContactRows <- ZIO
-        .foreach(customerIDsWithInputs)(customerIDWithInput =>
-          buildCustomerBusinessContactRows(
-            organizationID,
-            customerIDWithInput.customerID,
-            customerIDWithInput.input.customerBusinessContacts,
-            instantNow,
+        ).map(customerBusinessContactRows =>
+          (
+            customerBusinessDetailsRow = buildCustomerBusinessDetailsRow(
+              organizationID,
+              customerIDWithInput.customerID,
+              customerIDWithInput.input,
+              instantNow,
+            ),
+            customerBusinessContactRows = customerBusinessContactRows,
           )
         )
-        .map(_.flatten)
+      )
       _ <- database
         .transactionOrWiden(
           for {
-            _ <- customerBookQueries.insertCustomerBusinessDetailsRows(customerBusinessDetailsRows)
-            _ <- customerBookQueries.insertCustomerBusinessContactRows(customerBusinessContactRows)
+            _ <- customerBookQueries.insertCustomerBusinessDetailsRows(
+              customerBusinessInsertRows.map(_.customerBusinessDetailsRow)
+            )
+            _ <- customerBookQueries.insertCustomerBusinessContactRows(
+              customerBusinessInsertRows.flatMap(_.customerBusinessContactRows)
+            )
           } yield ()
         )
         .mapError(
@@ -311,7 +328,7 @@ object CustomerBookRepository {
             uniqueConstraintViolationMessage,
           )
         )
-    } yield customerIDsWithInputs.map(_.customerID)
+    } yield customerBusinessInsertRows
 
     override def updateCustomerBusiness(
         organizationID: OrganizationID,
@@ -356,7 +373,7 @@ object CustomerBookRepository {
         organizationID: OrganizationID,
         insertCustomerIndividualInputs: List[InsertCustomerIndividualInput],
         insertCustomerBusinessInputs: List[InsertCustomerBusinessInput],
-    ): IO[ServiceError, List[CustomerID]] = for {
+    ): IO[ServiceError, InsertCustomersResult] = for {
       instantNow                      <- timeProvider.instantNow
       customerIDsWithIndividualInputs <- ZIO.foreach(insertCustomerIndividualInputs)(input =>
         generateCustomerID.map(customerID => (customerID = customerID, input = input))
@@ -372,30 +389,34 @@ object CustomerBookRepository {
           instantNow,
         )
       )
-      customerBusinessDetailsRows = customerIDsWithBusinessInputs.map(customerIDWithInput =>
-        buildCustomerBusinessDetailsRow(
+      customerBusinessInsertRows <- ZIO.foreach(customerIDsWithBusinessInputs)(customerIDWithInput =>
+        buildCustomerBusinessContactRows(
           organizationID,
           customerIDWithInput.customerID,
-          customerIDWithInput.input,
+          customerIDWithInput.input.customerBusinessContacts,
           instantNow,
-        )
-      )
-      customerBusinessContactRows <- ZIO
-        .foreach(customerIDsWithBusinessInputs)(customerIDWithInput =>
-          buildCustomerBusinessContactRows(
-            organizationID,
-            customerIDWithInput.customerID,
-            customerIDWithInput.input.customerBusinessContacts,
-            instantNow,
+        ).map(customerBusinessContactRows =>
+          (
+            customerBusinessDetailsRow = buildCustomerBusinessDetailsRow(
+              organizationID,
+              customerIDWithInput.customerID,
+              customerIDWithInput.input,
+              instantNow,
+            ),
+            customerBusinessContactRows = customerBusinessContactRows,
           )
         )
-        .map(_.flatten)
+      )
       _ <- database
         .transactionOrWiden(
           for {
             _ <- customerBookQueries.insertCustomerIndividualDetailsRows(customerIndividualDetailsRows)
-            _ <- customerBookQueries.insertCustomerBusinessDetailsRows(customerBusinessDetailsRows)
-            _ <- customerBookQueries.insertCustomerBusinessContactRows(customerBusinessContactRows)
+            _ <- customerBookQueries.insertCustomerBusinessDetailsRows(
+              customerBusinessInsertRows.map(_.customerBusinessDetailsRow)
+            )
+            _ <- customerBookQueries.insertCustomerBusinessContactRows(
+              customerBusinessInsertRows.flatMap(_.customerBusinessContactRows)
+            )
           } yield ()
         )
         .mapError(
@@ -404,7 +425,10 @@ object CustomerBookRepository {
             uniqueConstraintViolationMessage,
           )
         )
-    } yield customerIDsWithIndividualInputs.map(_.customerID) ++ customerIDsWithBusinessInputs.map(_.customerID)
+    } yield (
+      customerIndividualDetailsRows = customerIndividualDetailsRows,
+      customerBusinessInsertRows = customerBusinessInsertRows,
+    )
 
     override def addCustomerBusinessContacts(
         organizationID: OrganizationID,
