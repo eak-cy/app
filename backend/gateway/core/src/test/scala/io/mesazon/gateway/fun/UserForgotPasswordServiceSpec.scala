@@ -497,6 +497,10 @@ class UserForgotPasswordServiceSpec
             .expects(userOtpRow.userID, ActionAttemptType.ForgotPasswordVerifyOTP)
             .returnsZIOUnit
             .once(),
+          userTokenRepositoryMock.deleteAllUserTokens
+            .expects(userDetailsRow.userID)
+            .returnsZIOUnit
+            .once(),
           jwtServiceMock.generateResetPasswordToken
             .expects(userDetailsRow.userID)
             .returningZIO(resetPasswordJwt)
@@ -570,6 +574,10 @@ class UserForgotPasswordServiceSpec
             .once(),
           userActionAttemptRepositoryMock.deleteUserActionAttempt
             .expects(userOtpRow.userID, ActionAttemptType.ForgotPasswordVerifyOTP)
+            .returnsZIOUnit
+            .once(),
+          userTokenRepositoryMock.deleteAllUserTokens
+            .expects(userDetailsRow.userID)
             .returnsZIOUnit
             .once(),
           jwtServiceMock.generateResetPasswordToken
