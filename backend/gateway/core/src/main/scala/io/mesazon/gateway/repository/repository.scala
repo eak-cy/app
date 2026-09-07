@@ -13,7 +13,10 @@ def findUniqueConstraintViolated(throwable: Throwable): Option[String] =
     case other => Option(other.getCause).filterNot(_ eq other).flatMap(findUniqueConstraintViolated)
   }
 
-def toServiceError(errorMessage: String, uniqueConstraintViolationMessage: PartialFunction[String, String])(
+def catchUniqueConstraintViolation(
+    errorMessage: String,
+    uniqueConstraintViolationMessage: PartialFunction[String, String],
+)(
     throwable: Throwable
 ): ServiceError =
   findUniqueConstraintViolated(throwable) match {

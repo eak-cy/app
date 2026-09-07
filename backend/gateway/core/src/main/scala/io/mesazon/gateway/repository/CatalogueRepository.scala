@@ -78,7 +78,7 @@ object CatalogueRepository {
       _ <- database
         .transactionOrWiden(catalogueItemQueries.insertCatalogueItemRow(catalogueItemRow))
         .mapError(
-          toServiceError(
+          catchUniqueConstraintViolation(
             s"Failed to insert catalogue item with ID: [$catalogueItemID]",
             uniqueConstraintViolationMessage,
           )
@@ -107,7 +107,7 @@ object CatalogueRepository {
             _ <- database
               .transactionOrWiden(catalogueItemQueries.insertCatalogueItemRows(catalogueItemRows))
               .mapError(
-                toServiceError(
+                catchUniqueConstraintViolation(
                   s"Failed to insert catalogue items for organization ID: [$organizationID]",
                   uniqueConstraintViolationMessage,
                 )
@@ -138,7 +138,7 @@ object CatalogueRepository {
           )
         )
         .mapError(
-          toServiceError(
+          catchUniqueConstraintViolation(
             s"Failed to update catalogue item with ID: [$catalogueItemID]",
             uniqueConstraintViolationMessage,
           )
@@ -154,10 +154,10 @@ object CatalogueRepository {
         .transactionOrWiden(
           catalogueItemQueries.archiveCatalogueItemRow(organizationID, catalogueItemID, UpdatedAt(instantNow))
         )
-        .mapError(
-          toServiceError(
+        .mapError(e =>
+          ServiceError.InternalServerError.RepositoryError(
             s"Failed to archive catalogue item with ID: [$catalogueItemID]",
-            uniqueConstraintViolationMessage,
+            e,
           )
         )
     } yield catalogueItemIDOptArchived
@@ -168,8 +168,11 @@ object CatalogueRepository {
     ): IO[ServiceError, Option[CatalogueItemRow]] =
       database
         .transactionOrWiden(catalogueItemQueries.getCatalogueItemRow(organizationID, catalogueItemID))
-        .mapError(
-          toServiceError(s"Failed to get catalogue item with ID: [$catalogueItemID]", uniqueConstraintViolationMessage)
+        .mapError(e =>
+          ServiceError.InternalServerError.RepositoryError(
+            s"Failed to get catalogue item with ID: [$catalogueItemID]",
+            e,
+          )
         )
 
     override def getCatalogueItemSummariesActive(
@@ -177,10 +180,10 @@ object CatalogueRepository {
     ): IO[ServiceError, List[CatalogueItemSummaryRow]] =
       database
         .transactionOrWiden(catalogueItemQueries.getCatalogueItemSummaryRowsActive(organizationID))
-        .mapError(
-          toServiceError(
+        .mapError(e =>
+          ServiceError.InternalServerError.RepositoryError(
             s"Failed to get catalogue items for organization ID: [$organizationID]",
-            uniqueConstraintViolationMessage,
+            e,
           )
         )
 

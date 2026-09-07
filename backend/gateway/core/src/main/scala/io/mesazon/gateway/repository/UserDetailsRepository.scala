@@ -83,7 +83,7 @@ object UserDetailsRepository {
           )
         )
         .mapError(
-          toServiceError(
+          catchUniqueConstraintViolation(
             s"Failed to updateUserDetails: [$userID], [$onboardStageUpdate], [$fullNameOptUpdate], [$phoneNumberOptUpdate]",
             uniqueConstraintViolationMessage,
           )
