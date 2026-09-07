@@ -1,10 +1,36 @@
 # Agent pipeline setup
 
-`/feature "<description>"` runs Product Owner → Engineering Manager → one complexity-selected Lead Engineer through local [OmniRoute](https://github.com/diegosouzapw/OmniRoute).
+Both hosts use the [shared workflow](../.agents/commands/feature.md). The main conversation is EM: clarify requirements (PO only when needed), agree a brief plan with the user, send one Lead to implement code/tests/docs, then review the diff. No separate orchestrator or routine PO documentation approval round.
 
-Shared sources are `.agents/{agents,contracts,commands,skills}/`; matching `.claude/` files are relative symlinks. Edit `.agents/`. Claude-only config/files remain real files in `.claude/`; diverge one shared file by replacing only its symlink. `.codex/agents/` contains thin Codex profiles that reuse the shared contracts and pin native Codex model/effort tiers.
+## Shared sources and hosts
 
-OmniRoute is per-engineer local infrastructure. Never commit its admin password, API key, or provider keys.
+`AGENTS.md` is shared through `CLAUDE.md`'s relative symlink. `.agents/` owns roles, contracts, commands, and skills; matching `.claude/` files are symlinks. `.codex/agents/*.toml` holds native metadata/model settings and references the same role Markdown, excluding Claude YAML. Both hosts read the same product and engineering docs. Keep credentials and local settings gitignored.
+
+Codex uses the [native TOML format](https://learn.chatgpt.com/docs/agent-configuration/subagents); Claude uses [Markdown subagents](https://code.claude.com/docs/en/sub-agents). Open a fresh session after profile changes. Claude: `/feature "<description>"`. Codex: `Use the feature workflow for <description>`; AGENTS.md routes the request without requiring a native slash-menu entry.
+
+EM speaks directly to the user and handles agent dispatch. If a subagent cannot ask the user directly, it returns `USER_QUESTION` to EM. Use the same workflow sequentially if agents are unavailable and disclose self-review. Ordinary ChatGPT without repository/tools access cannot automatically load this setup. Codex uses its configured provider; OmniRoute below is optional Claude infrastructure.
+
+## Roles and effort
+
+| Role | Claude profile | Codex profile | Use |
+|---|---|---|---|
+| PO | `sonnet` | parent default | new/unclear product requirements; accountable for `pages/` |
+| EM | main session; optional separate profile `sonnet` | main session; optional separate profile inherits parent | technical direction, questions, final review |
+| Lead LOW | `haiku` | `gpt-5.6-terra`/low | bounded implementation |
+| Lead MEDIUM | `sonnet` | `gpt-5.6-sol`/medium | contained feature/integration work |
+| Lead HIGH | `opus` | `gpt-5.6-sol`/xhigh | high-risk implementation |
+
+The [complexity contract](../.agents/contracts/complexity.md) scales process depth as well as Lead selection. Model availability depends on the account/host. Main EM uses the user's selected session model; the optional EM profile does not change it.
+
+Documentation ownership is accountability, not a write restriction. All roles may make verified factual edits within agreed scope; the Lead normally updates code and reference docs together. PO is consulted again for product ambiguity only. One writer per file; one EM review covers code and docs. No finished epic prerequisite; new feature docs still start in the first slice.
+
+The [shared contract](../.agents/contracts/workflow.md) owns question, agreement, context, and messaging rules. AGENTS.md owns change-specific verification: docs/config-only edits use relevant structural checks, while application changes retain applicable tests and lint. Small features can combine dependency-ordered slices in one PR. No unrelated tests or repeated passing checks.
+
+To evaluate changes over several comparable tasks, record available time-to-first-code-edit, total time, token usage, and material rework. Use host-reported metrics when available; do not add monitoring agents or invent missing counters. Compare similar risk levels before changing more settings.
+
+## Optional Claude OmniRoute setup
+
+Never commit OmniRoute's admin password, API key, or provider keys. The following records the tested local setup; verify provider IDs against your installation.
 
 ## Requirements
 
@@ -79,41 +105,9 @@ OMNIROUTE_API_KEY=<key> omniroute chat "reply with exactly: pong" --model cc/cla
 
 Restart every Claude Code process; environment is read at startup. `ANTHROPIC_BASE_URL` must not end in `/v1`.
 
-## Checked-in roles/routing
+## User questions and permissions
 
-| Role | Claude | Codex | Ownership |
-|---|---|---|---|
-| Product Owner | `haiku` | parent default | complete product requirements/decisions; asks the user directly for gaps |
-| Engineering Manager | `sonnet` | parent default | edge cases, doc topology, outcome chunks, complexity |
-| Lead LOW | `haiku` | `gpt-5.6-terra`/low | bounded known-pattern work |
-| Lead MEDIUM | `sonnet` | `gpt-5.6-sol`/high | contained new behavior through multi-layer/risky work |
-| Lead HIGH | `opus` | `gpt-5.6-sol`/xhigh | highest-risk/system-wide work |
-
-EM classifies the whole request by `.agents/contracts/complexity.md`'s highest material trigger. One matching Lead session plans, implements, and reviews the full request; scope changes force reclassification. Shared execution rules live in `.agents/contracts/lead-engineer.md`.
-
-The Product Owner and Lead LOW roles run on `haiku` (Claude Haiku 4.5) — the cheapest capable Claude tier — so the whole pipeline runs on Anthropic models without depending on external free routes. If you instead route through OmniRoute free IDs, verify each with `omniroute chat` before use, as availability changes and some return 401/anti-abuse failures.
-
-## Restrictive Claude permissions
-
-If “don't ask” mode denies tools, add to gitignored `.claude/settings.local.json` `permissions.allow` (`AskUserQuestion` is used by the Product Owner to interview the user directly):
-
-```json
-"AskUserQuestion",
-"WebFetch",
-"WebSearch"
-```
-
-This does not bypass Claude Code's separate, non-configurable auto-mode classifier.
-
-## Run
-
-In a fresh Claude Code session:
-
-```text
-/feature "add a health-check endpoint"
-```
-
-PO owns the final product specification, asking the user directly for anything it can't derive itself. EM challenges the spec and routes any remaining product ambiguity back to PO — never asking the user directly — maps only required docs/outcome slices, and assigns complexity. The selected expert Lead owns all coding decisions and follows [Feature flow](features/flow/README.md), including same-PR tests/docs.
+Run the main conversation in a mode that allows user interaction. Claude's `dontAsk` mode denies `AskUserQuestion` even if allowlisted; use a normal interactive mode or relay the question as plain text. A tool permission denial is not a user answer. Do not change local permissions or bypass host approval controls automatically.
 
 ## Troubleshooting
 

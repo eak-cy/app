@@ -68,4 +68,4 @@ Form: `<concept><source/state><role>`; concept first, qualifiers last.
 
 ### Ownership
 
-- An orchestration/service test proves validation, decisions, mappings, dependency calls, and handled branches. Validation failure must prove downstream dependencies were not called (strict mock/no expectation). For dependency errors merely propagated, test one generic instance propagates unchanged, not every subtype; test a specific subtype only when handled differently.
+- An orchestration/service test proves validation, decisions, mappings, dependency calls, and handled branches — never behavior whose only distinguishing effect lives inside a mocked dependency's configured return value. See [Functional testing](../project/functional-testing.md) for the full mocked-dependency service-test conventions: harness/setup, expectation/sequencing rules, coverage expectations, and the mocked-dependency anti-pattern with a worked example.

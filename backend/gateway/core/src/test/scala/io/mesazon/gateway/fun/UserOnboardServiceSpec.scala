@@ -242,6 +242,15 @@ class UserOnboardServiceSpec
             .expects(authedUser.userID)
             .returningZIO(Some(userDetailsRow))
             .once(),
+          userDetailsRepositoryMock.updateUserDetails
+            .expects(
+              authedUser.userID,
+              OnboardStage.PhoneVerification,
+              Some(fullName),
+              Some(phoneNumber),
+            )
+            .returningZIO(userDetailsRow)
+            .once(),
           (() => timeProviderMock.instantNow).expects().returningZIO(instantNow).once(),
           userOtpRepositoryMock.getUserOtpByUserID
             .expects(authedUser.userID, OtpType.PhoneVerification)
@@ -255,15 +264,6 @@ class UserOnboardServiceSpec
           userActionAttemptRepositoryMock.deleteUserActionAttempt
             .expects(authedUser.userID, ActionAttemptType.PhoneVerificationVerifyOTP)
             .returnsZIOUnit
-            .once(),
-          userDetailsRepositoryMock.updateUserDetails
-            .expects(
-              authedUser.userID,
-              OnboardStage.PhoneVerification,
-              Some(fullName),
-              Some(phoneNumber),
-            )
-            .returningZIO(userDetailsRow)
             .once(),
           twilioClientMock.sendOtpSms
             .expects(
@@ -320,6 +320,15 @@ class UserOnboardServiceSpec
             .expects(authedUser.userID)
             .returningZIO(Some(userDetailsRow))
             .once(),
+          userDetailsRepositoryMock.updateUserDetails
+            .expects(
+              authedUser.userID,
+              OnboardStage.PhoneVerification,
+              Some(fullName),
+              Some(phoneNumber),
+            )
+            .returningZIO(userDetailsRow)
+            .once(),
           (() => timeProviderMock.instantNow).expects().returningZIO(instantNow).once(),
           userOtpRepositoryMock.getUserOtpByUserID
             .expects(authedUser.userID, OtpType.PhoneVerification)
@@ -333,15 +342,6 @@ class UserOnboardServiceSpec
           userActionAttemptRepositoryMock.deleteUserActionAttempt
             .expects(authedUser.userID, ActionAttemptType.PhoneVerificationVerifyOTP)
             .returnsZIOUnit
-            .once(),
-          userDetailsRepositoryMock.updateUserDetails
-            .expects(
-              authedUser.userID,
-              OnboardStage.PhoneVerification,
-              Some(fullName),
-              Some(phoneNumber),
-            )
-            .returningZIO(userDetailsRow)
             .once(),
         )
 
@@ -374,11 +374,32 @@ class UserOnboardServiceSpec
             expiresAt = expiresAt,
           )
 
+        val fullName    = arbitrarySample[FullName]
+        val phoneNumber = arbitrarySample[PhoneNumber]
+
+        val onboardDetailsPostRequest = arbitrarySample[smithy.OnboardDetailsPostRequest]
+          .copy(
+            fullName = fullName.value,
+            phoneNumber = smithy.PhoneNumberRequest(
+              phoneNumber.phoneNationalNumber.value,
+              phoneNumber.phoneCountryCode.value,
+            ),
+          )
+
         inSequence(
           (() => authStateMock.get).expects().returningZIO(authedUser).once(),
           userDetailsRepositoryMock.getUserDetails
             .expects(authedUser.userID)
             .returningZIO(Some(userDetailsRow))
+            .once(),
+          userDetailsRepositoryMock.updateUserDetails
+            .expects(
+              authedUser.userID,
+              OnboardStage.PhoneVerification,
+              Some(fullName),
+              Some(phoneNumber),
+            )
+            .returningZIO(userDetailsRow)
             .once(),
           (() => timeProviderMock.instantNow).expects().returningZIO(instantNow).once(),
           userOtpRepositoryMock.getUserOtpByUserID
@@ -388,8 +409,6 @@ class UserOnboardServiceSpec
         )
 
         val userOnboardService = buildUserOnboardServiceLive()
-
-        val onboardDetailsPostRequest = arbitrarySample[smithy.OnboardDetailsPostRequest]
 
         val onboardDetailsPostResponse =
           userOnboardService.onboardDetailsPost(onboardDetailsPostRequest).zioValue
@@ -427,6 +446,15 @@ class UserOnboardServiceSpec
             .expects(authedUser.userID)
             .returningZIO(Some(userDetailsRow))
             .once(),
+          userDetailsRepositoryMock.updateUserDetails
+            .expects(
+              authedUser.userID,
+              OnboardStage.PhoneVerification,
+              Some(fullName),
+              Some(phoneNumber),
+            )
+            .returningZIO(userDetailsRow)
+            .once(),
           (() => timeProviderMock.instantNow).expects().returningZIO(instantNow).once(),
           userOtpRepositoryMock.getUserOtpByUserID
             .expects(authedUser.userID, OtpType.PhoneVerification)
@@ -445,15 +473,6 @@ class UserOnboardServiceSpec
           userActionAttemptRepositoryMock.deleteUserActionAttempt
             .expects(authedUser.userID, ActionAttemptType.PhoneVerificationVerifyOTP)
             .returnsZIOUnit
-            .once(),
-          userDetailsRepositoryMock.updateUserDetails
-            .expects(
-              authedUser.userID,
-              OnboardStage.PhoneVerification,
-              Some(fullName),
-              Some(phoneNumber),
-            )
-            .returningZIO(userDetailsRow)
             .once(),
           twilioClientMock.sendOtpSms
             .expects(
@@ -593,6 +612,15 @@ class UserOnboardServiceSpec
             .expects(authedUser.userID)
             .returningZIO(Some(userDetailsRow))
             .once(),
+          userDetailsRepositoryMock.updateUserDetails
+            .expects(
+              authedUser.userID,
+              OnboardStage.PhoneVerification,
+              Some(fullName),
+              Some(phoneNumber),
+            )
+            .returningZIO(userDetailsRow)
+            .once(),
           (() => timeProviderMock.instantNow).expects().returningZIO(instantNow).once(),
           userOtpRepositoryMock.getUserOtpByUserID
             .expects(authedUser.userID, OtpType.PhoneVerification)
@@ -606,15 +634,6 @@ class UserOnboardServiceSpec
           userActionAttemptRepositoryMock.deleteUserActionAttempt
             .expects(authedUser.userID, ActionAttemptType.PhoneVerificationVerifyOTP)
             .returnsZIOUnit
-            .once(),
-          userDetailsRepositoryMock.updateUserDetails
-            .expects(
-              authedUser.userID,
-              OnboardStage.PhoneVerification,
-              Some(fullName),
-              Some(phoneNumber),
-            )
-            .returningZIO(userDetailsRow)
             .once(),
           twilioClientMock.sendOtpSms
             .expects(
@@ -648,6 +667,56 @@ class UserOnboardServiceSpec
           .UnexpectedError("Failed to send sms")
 
         sendOtpSmsCounter.get.zioValue shouldBe userOnboardConfig.sendPhoneVerificationOtpMaxRetries + 1
+      }
+
+      "fail with ConflictError when the phone number belongs to a different account" in new TestContext {
+        val authedUser   = arbitrarySample[AuthedUser]
+        val onboardStage = Random.shuffle(OnboardStage.onboardDetailsStages).zioValue.head
+
+        val userDetailsRow = arbitrarySample[UserDetailsRow]
+          .copy(userID = authedUser.userID, onboardStage = onboardStage)
+
+        val fullName    = arbitrarySample[FullName]
+        val phoneNumber = arbitrarySample[PhoneNumber]
+
+        val onboardDetailsPostRequest = arbitrarySample[smithy.OnboardDetailsPostRequest]
+          .copy(
+            fullName = fullName.value,
+            phoneNumber = smithy.PhoneNumberRequest(
+              phoneNumber.phoneNationalNumber.value,
+              phoneNumber.phoneCountryCode.value,
+            ),
+          )
+
+        val serviceErrorConflict = ServiceError.ConflictError.UniqueConstraintViolation(
+          "The phone number given already belongs to a different account",
+          new RuntimeException("unique violation"),
+        )
+
+        // No OTP/SMS mock: the constraint violation must reject before any of it is even reached.
+        inSequence(
+          (() => authStateMock.get).expects().returningZIO(authedUser).once(),
+          userDetailsRepositoryMock.getUserDetails
+            .expects(authedUser.userID)
+            .returningZIO(Some(userDetailsRow))
+            .once(),
+          userDetailsRepositoryMock.updateUserDetails
+            .expects(
+              authedUser.userID,
+              OnboardStage.PhoneVerification,
+              Some(fullName),
+              Some(phoneNumber),
+            )
+            .returns(ZIO.fail(serviceErrorConflict))
+            .once(),
+        )
+
+        val userOnboardService = buildUserOnboardServiceLive()
+
+        val serviceError = userOnboardService.onboardDetailsPost(onboardDetailsPostRequest).zioError
+
+        serviceError shouldBe a[ServiceError.ConflictError.UniqueConstraintViolation]
+        serviceError.asInstanceOf[ServiceError.ConflictError.UniqueConstraintViolation] shouldBe serviceErrorConflict
       }
     }
 

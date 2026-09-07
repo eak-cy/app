@@ -398,6 +398,238 @@ class UserOnboardApiSpec
         userDetailsRowsAll.head.fullName shouldBe None
         userDetailsRowsAll.head.phoneNumber shouldBe None
       }
+
+      "fail with Conflict when the phone number given already belongs to a different account" in withContext {
+        context =>
+          import context.*
+
+          val onboardStage = Random.shuffle(OnboardStage.onboardDetailsStages).zioValue.head
+
+          val userDetailsRowCaller = arbitrarySample[UserDetailsRow].copy(
+            onboardStage = onboardStage,
+            fullName = None,
+            phoneNumber = None,
+          )
+
+          val onboardStageOtherNotVerified =
+            Random.shuffle(OnboardStage.values.toList diff List(OnboardStage.PhoneVerified)).zioValue.head
+
+          val phoneNumberOther    = arbitrarySample[PhoneNumber]
+          val userDetailsRowOther = arbitrarySample[UserDetailsRow].copy(
+            onboardStage = onboardStageOtherNotVerified,
+            phoneNumber = Some(phoneNumberOther),
+          )
+
+          postgresClient.executeQuery(userDetailsQueries.insertUserDetails(userDetailsRowCaller)).zioValue
+          postgresClient.executeQuery(userDetailsQueries.insertUserDetails(userDetailsRowOther)).zioValue
+
+          val onboardDetailsPostRequest = arbitrarySample[smithy.OnboardDetailsPostRequest].copy(
+            phoneNumber = smithy.PhoneNumberRequest(
+              phoneNumberOther.phoneNationalNumber.value,
+              phoneNumberOther.phoneCountryCode.value,
+            )
+          )
+
+          val accessToken = jwtService.generateAccessToken(userDetailsRowCaller.userID).zioValue.accessToken
+
+          val onboardDetailsPostResponse = gatewayClient
+            .onboardDetailsPost[smithy.Conflict](
+              onboardDetailsPostRequest,
+              Some(accessToken),
+            )
+            .zioValue
+
+          onboardDetailsPostResponse.code shouldBe StatusCode.Conflict
+          onboardDetailsPostResponse.body.left.value shouldBe smithy.Conflict(message =
+            "The phone number given already belongs to a different account"
+          )
+
+          mailHogClient.readInbox().zioValue.total shouldBe 0
+
+          val userDetailsRowsAll =
+            postgresClient.executeQuery(userDetailsQueries.getAllUserDetailsTesting).zioValue
+
+          userDetailsRowsAll should contain theSameElementsAs List(userDetailsRowCaller, userDetailsRowOther)
+
+          val userOtpRowsAll = postgresClient.executeQuery(userOtpQueries.getAllUserOtpsTesting).zioValue
+
+          userOtpRowsAll should have size 0
+      }
+
+      "fail with Conflict when the phone number given already belongs to a different account, even while the caller's own OTP is on cooldown" in withContext {
+        context =>
+          import context.*
+
+          val onboardStage = Random.shuffle(OnboardStage.onboardDetailsStages).zioValue.head
+
+          val fullNameCaller    = arbitrarySample[FullName]
+          val phoneNumberCaller = arbitrarySample[PhoneNumber]
+          // The arbitrary phone number space is small and fixed; draw until distinct from the caller's own.
+          val phoneNumberOther =
+            Iterator.continually(arbitrarySample[PhoneNumber]).dropWhile(_ == phoneNumberCaller).next()
+
+          val userDetailsRowCaller = arbitrarySample[UserDetailsRow].copy(
+            onboardStage = onboardStage,
+            fullName = Some(fullNameCaller),
+            phoneNumber = Some(phoneNumberCaller),
+          )
+
+          val userDetailsRowOther = arbitrarySample[UserDetailsRow].copy(
+            phoneNumber = Some(phoneNumberOther)
+          )
+
+          postgresClient.executeQuery(userDetailsQueries.insertUserDetails(userDetailsRowCaller)).zioValue
+          postgresClient.executeQuery(userDetailsQueries.insertUserDetails(userDetailsRowOther)).zioValue
+
+          // Still well within the resend cooldown (45s expiry, 15s cooldown), forcing the reuse branch
+          val userOtpRowCaller = arbitrarySample[UserOtpRow].copy(
+            userID = userDetailsRowCaller.userID,
+            otpType = OtpType.PhoneVerification,
+            expiresAt = ExpiresAt(Instant.now.truncatedTo(ChronoUnit.MILLIS).plusSeconds(100)),
+          )
+
+          postgresClient.executeQuery(userOtpQueries.insertUserOtp(userOtpRowCaller)).zioValue
+
+          val onboardDetailsPostRequest = arbitrarySample[smithy.OnboardDetailsPostRequest].copy(
+            phoneNumber = smithy.PhoneNumberRequest(
+              phoneNumberOther.phoneNationalNumber.value,
+              phoneNumberOther.phoneCountryCode.value,
+            )
+          )
+
+          val accessToken = jwtService.generateAccessToken(userDetailsRowCaller.userID).zioValue.accessToken
+
+          val onboardDetailsPostResponse = gatewayClient
+            .onboardDetailsPost[smithy.Conflict](
+              onboardDetailsPostRequest,
+              Some(accessToken),
+            )
+            .zioValue
+
+          onboardDetailsPostResponse.code shouldBe StatusCode.Conflict
+          onboardDetailsPostResponse.body.left.value shouldBe smithy.Conflict(message =
+            "The phone number given already belongs to a different account"
+          )
+
+          mailHogClient.readInbox().zioValue.total shouldBe 0
+
+          val userDetailsRowsAll =
+            postgresClient.executeQuery(userDetailsQueries.getAllUserDetailsTesting).zioValue
+
+          userDetailsRowsAll should contain theSameElementsAs List(userDetailsRowCaller, userDetailsRowOther)
+
+          val userOtpRowsAll = postgresClient.executeQuery(userOtpQueries.getAllUserOtpsTesting).zioValue
+
+          userOtpRowsAll should have size 1
+          userOtpRowsAll.head shouldBe userOtpRowCaller
+      }
+
+      "successfully onboard details when the phone number given is already the caller's own" in withContext { context =>
+        import context.*
+
+        val onboardStage = Random.shuffle(OnboardStage.onboardDetailsStages).zioValue.head
+
+        val phoneNumberCaller = arbitrarySample[PhoneNumber]
+
+        val userDetailsRowCaller = arbitrarySample[UserDetailsRow].copy(
+          onboardStage = onboardStage,
+          fullName = Some(arbitrarySample[FullName]),
+          phoneNumber = Some(phoneNumberCaller),
+        )
+
+        postgresClient.executeQuery(userDetailsQueries.insertUserDetails(userDetailsRowCaller)).zioValue
+
+        val onboardDetailsPostRequest = arbitrarySample[smithy.OnboardDetailsPostRequest].copy(
+          phoneNumber = smithy.PhoneNumberRequest(
+            phoneNumberCaller.phoneNationalNumber.value,
+            phoneNumberCaller.phoneCountryCode.value,
+          )
+        )
+
+        val accessToken = jwtService.generateAccessToken(userDetailsRowCaller.userID).zioValue.accessToken
+
+        val onboardDetailsPostResponse = gatewayClient
+          .onboardDetailsPost[smithy.InternalServerError](
+            onboardDetailsPostRequest,
+            Some(accessToken),
+          )
+          .zioValue
+
+        onboardDetailsPostResponse.code shouldBe StatusCode.Ok
+        onboardDetailsPostResponse.body.value.onboardStage.name shouldBe "PHONE_VERIFICATION"
+
+        mailHogClient.readInbox().zioValue.total shouldBe 0
+
+        val userDetailsRowsAll =
+          postgresClient.executeQuery(userDetailsQueries.getAllUserDetailsTesting).zioValue
+
+        userDetailsRowsAll should have size 1
+        userDetailsRowsAll.head.userID shouldBe userDetailsRowCaller.userID
+        userDetailsRowsAll.head.fullName shouldBe Some(onboardDetailsPostRequest.fullName)
+        userDetailsRowsAll.head.phoneNumber shouldBe Some(phoneNumberCaller)
+      }
+
+      "successfully onboard details when the phone number given is already the caller's own, while the caller's own OTP is on cooldown" in withContext {
+        context =>
+          import context.*
+
+          val onboardStage = Random.shuffle(OnboardStage.onboardDetailsStages).zioValue.head
+
+          val fullNameCaller    = arbitrarySample[FullName]
+          val phoneNumberCaller = arbitrarySample[PhoneNumber]
+
+          val userDetailsRowCaller = arbitrarySample[UserDetailsRow].copy(
+            onboardStage = onboardStage,
+            fullName = Some(fullNameCaller),
+            phoneNumber = Some(phoneNumberCaller),
+          )
+
+          postgresClient.executeQuery(userDetailsQueries.insertUserDetails(userDetailsRowCaller)).zioValue
+
+          // Still well within the resend cooldown (45s expiry, 15s cooldown), forcing the reuse branch
+          val userOtpRowCaller = arbitrarySample[UserOtpRow].copy(
+            userID = userDetailsRowCaller.userID,
+            otpType = OtpType.PhoneVerification,
+            expiresAt = ExpiresAt(Instant.now.truncatedTo(ChronoUnit.MILLIS).plusSeconds(100)),
+          )
+
+          postgresClient.executeQuery(userOtpQueries.insertUserOtp(userOtpRowCaller)).zioValue
+
+          val onboardDetailsPostRequest = arbitrarySample[smithy.OnboardDetailsPostRequest].copy(
+            phoneNumber = smithy.PhoneNumberRequest(
+              phoneNumberCaller.phoneNationalNumber.value,
+              phoneNumberCaller.phoneCountryCode.value,
+            )
+          )
+
+          val accessToken = jwtService.generateAccessToken(userDetailsRowCaller.userID).zioValue.accessToken
+
+          val onboardDetailsPostResponse = gatewayClient
+            .onboardDetailsPost[smithy.InternalServerError](
+              onboardDetailsPostRequest,
+              Some(accessToken),
+            )
+            .zioValue
+
+          onboardDetailsPostResponse.code shouldBe StatusCode.Ok
+          onboardDetailsPostResponse.body.value.onboardStage.name shouldBe "PHONE_VERIFICATION"
+          onboardDetailsPostResponse.body.value.otpID shouldBe userOtpRowCaller.otpID.value
+
+          mailHogClient.readInbox().zioValue.total shouldBe 0
+
+          val userOtpRowsAll = postgresClient.executeQuery(userOtpQueries.getAllUserOtpsTesting).zioValue
+
+          userOtpRowsAll should have size 1
+          userOtpRowsAll.head shouldBe userOtpRowCaller
+
+          val userDetailsRowsAll =
+            postgresClient.executeQuery(userDetailsQueries.getAllUserDetailsTesting).zioValue
+
+          userDetailsRowsAll should have size 1
+          userDetailsRowsAll.head.userID shouldBe userDetailsRowCaller.userID
+          userDetailsRowsAll.head.fullName shouldBe Some(onboardDetailsPostRequest.fullName)
+          userDetailsRowsAll.head.phoneNumber shouldBe Some(phoneNumberCaller)
+      }
     }
 
     "POST /onboard/verify/phone-number" should {

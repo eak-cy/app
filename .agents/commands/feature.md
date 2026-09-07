@@ -1,56 +1,15 @@
 ---
-description: Product Owner → Engineering Manager → complexity-selected Lead Engineer
+description: EM-led clarification → agreed plan → implementation → review
 argument-hint: <feature description>
 ---
 
-Orchestrate **"$ARGUMENTS"**. Do not design/code. Preserve full role outputs; keep sessions alive; show handoffs/progress. Never commit/push.
+Handle "$ARGUMENTS". The main conversation acts as EM: read `.agents/agents/engineering-manager.md` (ignore YAML) and follow `.agents/contracts/workflow.md`. Do not spawn an EM just to relay messages.
 
-## 1 Product
+1. For new or unclear product requirements, ask `product-owner` once for a compact `PRODUCT_BRIEF`. For an explicit correction or already-defined story, use the user's requirements directly. Resume PO only if product meaning remains unclear.
+2. Inspect relevant code, resolve material questions with the user, and agree on a brief plan. Apply `.agents/contracts/complexity.md`. Reuse prior explicit agreement; no second plan approval or mandatory pre-implementation docs round.
+3. Send one `ENGINEERING_HANDOFF` to the selected `lead-engineer-low`, `lead-engineer-medium`, or `lead-engineer-high`, authorizing code, relevant checks, and factual docs together. Do not request another formal plan. If agents are unavailable, implement in the main conversation and disclose that the review is a self-review.
+4. Answer Lead questions directly or ask the user when a preference is needed. Send only the resolution and changed scope. Let the Lead complete the agreed work without per-task dispatch.
+5. Review the actual code/doc diff and `IMPLEMENTATION_REPORT`. Fix trivial factual docs directly; return concrete code findings to the same Lead. Recheck affected changes only. Consult PO only for product ambiguity, not routine documentation approval.
+6. Report delivered behavior, checks, and limitations. Mark done when relevant verification, agreed scope, and docs are satisfied. Required checks that could not run remain explicit verification gaps.
 
-Spawn `product-owner` with the raw request. Keep session. Require `PRODUCT_SPEC`.
-
-PO identifies the epic in `pages/epics/` the request belongs to, asking the user when the fit is unclear, and creates one from the template when none exists. Require the epic written and saved, with `PRODUCT_SPEC` naming it, before moving on — do not let the epic be deferred to EM or the Lead.
-
-## 2 Engineering
-
-Spawn `engineering-manager` with `PRODUCT_SPEC`. Keep session. EM reads the named epic in full for the surrounding journey before mapping docs and slices.
-
-If EM returns `PRODUCT_QUESTIONS`:
-
-1. Send them to the same PO.
-2. PO answers from context, asking the user directly via `AskUserQuestion` if it can't; require an updated `PRODUCT_SPEC`.
-3. Send the updated `PRODUCT_SPEC` to EM.
-4. Repeat until EM returns `ENGINEERING_PACKAGE` with no open product questions.
-
-Do not let EM bypass PO for product decisions unless PO explicitly escalates.
-
-## 3 Complexity route
-
-Validate package level/profile:
-
-| Level | Agent |
-|---|---|
-| LOW | `lead-engineer-low` |
-| MEDIUM | `lead-engineer-medium` |
-| HIGH | `lead-engineer-high` |
-
-Spawn exactly that Lead with the full package. Keep session for planning, implementation, and final review.
-
-If Lead returns `REQUIREMENT_QUESTIONS`, send to same EM. EM answers from package or routes back to PO per the loop above (PO asks the user if needed). Return the resolved answer and updated package/spec to the same Lead. Lead owns coding decisions; never route coding questions to EM/PO/user.
-
-## 4 Plan/execute
-
-Require `IMPLEMENTATION_PLAN`. Register tasks with `TaskCreate`.
-
-For each task in order:
-
-1. `TaskUpdate` → `in_progress`.
-2. Send full task + package to same Lead and request implementation/verification.
-3. If requirement uncertainty appears, use step 3 escalation; resume same Lead.
-4. Require command evidence; `TaskUpdate` → `completed`.
-
-After tasks, ask same Lead for full-diff review and `IMPLEMENTATION_REPORT`. If it finds issues, track/fix/recheck before completion.
-
-## 5 Wrap
-
-Report requirements delivered, docs/status, verification, remaining/N/A work, and complexity/profile used. Confirm feature doc lifecycle and docs currency from `AGENTS.md`, and that the epic matches the behavior actually shipped.
+Use task tracking only when it helps larger work. No mandatory status tokens or host-specific task APIs. The EM custom-agent profile remains available for an explicitly requested separate review, not a required stage.

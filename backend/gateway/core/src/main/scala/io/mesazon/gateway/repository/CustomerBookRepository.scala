@@ -1,14 +1,13 @@
 package io.mesazon.gateway.repository
 
 import cats.data.NonEmptyList
-import io.github.gaelrenoux.tranzactio.{DatabaseOps, DbException}
+import io.github.gaelrenoux.tranzactio.DatabaseOps
 import io.mesazon.clock.TimeProvider
 import io.mesazon.domain.gateway.*
 import io.mesazon.gateway.repository.CustomerBookRepository.*
 import io.mesazon.gateway.repository.domain.*
 import io.mesazon.gateway.repository.queries.CustomerBookQueries
 import io.mesazon.generator.IDGenerator
-import org.postgresql.util.{PSQLException, PSQLState}
 import org.typelevel.doobie.Transactor
 import zio.*
 
@@ -167,7 +166,12 @@ object CustomerBookRepository {
         .transactionOrWiden(
           customerBookQueries.insertCustomerIndividualDetailsRow(customerIndividualDetailsRow)
         )
-        .mapError(toServiceError(s"Failed to insert customer individual with ID: [$customerID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to insert customer individual with ID: [$customerID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerID
 
     override def insertCustomerIndividuals(
@@ -190,7 +194,12 @@ object CustomerBookRepository {
         .transactionOrWiden(
           customerBookQueries.insertCustomerIndividualDetailsRows(customerIndividualDetailsRows)
         )
-        .mapError(toServiceError(s"Failed to insert customer individuals for organization ID: [$organizationID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to insert customer individuals for organization ID: [$organizationID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerIDsWithInputs.map(_.customerID)
 
     override def updateCustomerIndividual(
@@ -222,7 +231,12 @@ object CustomerBookRepository {
             countryOptUpdate,
           )
         )
-        .mapError(toServiceError(s"Failed to update customer individual with ID: [$customerID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to update customer individual with ID: [$customerID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerIndividualDetailsRowUpdated
 
     override def insertCustomerBusiness(
@@ -250,7 +264,12 @@ object CustomerBookRepository {
             _ <- customerBookQueries.insertCustomerBusinessContactRows(customerBusinessContactRows)
           } yield ()
         )
-        .mapError(toServiceError(s"Failed to insert customer business with ID: [$customerID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to insert customer business with ID: [$customerID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerID
 
     override def insertCustomerBusinesses(
@@ -286,7 +305,12 @@ object CustomerBookRepository {
             _ <- customerBookQueries.insertCustomerBusinessContactRows(customerBusinessContactRows)
           } yield ()
         )
-        .mapError(toServiceError(s"Failed to insert customer businesses for organization ID: [$organizationID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to insert customer businesses for organization ID: [$organizationID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerIDsWithInputs.map(_.customerID)
 
     override def updateCustomerBusiness(
@@ -320,7 +344,12 @@ object CustomerBookRepository {
             countryOptUpdate,
           )
         )
-        .mapError(toServiceError(s"Failed to update customer business with ID: [$customerID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to update customer business with ID: [$customerID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerBusinessDetailsRowUpdated
 
     override def insertCustomers(
@@ -369,7 +398,12 @@ object CustomerBookRepository {
             _ <- customerBookQueries.insertCustomerBusinessContactRows(customerBusinessContactRows)
           } yield ()
         )
-        .mapError(toServiceError(s"Failed to insert customers for organization ID: [$organizationID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to insert customers for organization ID: [$organizationID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerIDsWithIndividualInputs.map(_.customerID) ++ customerIDsWithBusinessInputs.map(_.customerID)
 
     override def addCustomerBusinessContacts(
@@ -397,7 +431,12 @@ object CustomerBookRepository {
               else ZIO.succeed(List.empty[CustomerBusinessContactRow])
           } yield inserted
         )
-        .mapError(toServiceError(s"Failed to add customer business contacts for customer ID: [$customerID]"))
+        .mapError(
+          catchUniqueConstraintViolation(
+            s"Failed to add customer business contacts for customer ID: [$customerID]",
+            uniqueConstraintViolationMessage,
+          )
+        )
     } yield customerBusinessContactRowsInserted
 
     override def removeCustomerBusinessContacts(
@@ -422,7 +461,12 @@ object CustomerBookRepository {
                 )
               } yield ()
             )
-            .mapError(toServiceError(s"Failed to remove customer business contacts for customer ID: [$customerID]"))
+            .mapError(e =>
+              ServiceError.InternalServerError.RepositoryError(
+                s"Failed to remove customer business contacts for customer ID: [$customerID]",
+                e,
+              )
+            )
       }
 
     override def archiveCustomer(
@@ -434,7 +478,12 @@ object CustomerBookRepository {
         .transactionOrWiden(
           customerBookQueries.archiveCustomerRow(organizationID, customerID, UpdatedAt(instantNow))
         )
-        .mapError(toServiceError(s"Failed to archive customer with ID: [$customerID]"))
+        .mapError(e =>
+          ServiceError.InternalServerError.RepositoryError(
+            s"Failed to archive customer with ID: [$customerID]",
+            e,
+          )
+        )
     } yield customerIDOptArchived
 
     override def getCustomerIndividual(
@@ -445,7 +494,12 @@ object CustomerBookRepository {
         .transactionOrWiden(
           customerBookQueries.getCustomerIndividualDetailsRow(organizationID, customerID)
         )
-        .mapError(toServiceError(s"Failed to get customer individual with ID: [$customerID]"))
+        .mapError(e =>
+          ServiceError.InternalServerError.RepositoryError(
+            s"Failed to get customer individual with ID: [$customerID]",
+            e,
+          )
+        )
 
     override def getCustomerBusiness(
         organizationID: OrganizationID,
@@ -455,7 +509,12 @@ object CustomerBookRepository {
         .transactionOrWiden(
           customerBookQueries.getCustomerBusinessDetailsRow(organizationID, customerID)
         )
-        .mapError(toServiceError(s"Failed to get customer business with ID: [$customerID]"))
+        .mapError(e =>
+          ServiceError.InternalServerError.RepositoryError(
+            s"Failed to get customer business with ID: [$customerID]",
+            e,
+          )
+        )
 
     override def getCustomers(
         organizationID: OrganizationID
@@ -464,40 +523,21 @@ object CustomerBookRepository {
         .transactionOrWiden(
           customerBookQueries.getCustomerSummaryRows(organizationID)
         )
-        .mapError(toServiceError(s"Failed to get customers for organization ID: [$organizationID]"))
-
-    private def toServiceError(errorMessage: String)(dbException: DbException): ServiceError =
-      findUniqueConstraintViolated(dbException) match {
-        case Some(constraint) =>
-          ServiceError.ConflictError.UniqueConstraintViolation(
-            uniqueConstraintViolationMessage(constraint),
-            dbException,
+        .mapError(e =>
+          ServiceError.InternalServerError.RepositoryError(
+            s"Failed to get customers for organization ID: [$organizationID]",
+            e,
           )
-        case None =>
-          ServiceError.InternalServerError.RepositoryError(errorMessage, dbException)
-      }
+        )
 
-    private def findUniqueConstraintViolated(throwable: Throwable): Option[String] =
-      throwable match {
-        case null                                                                                             => None
-        case psqlException: PSQLException if psqlException.getSQLState == PSQLState.UNIQUE_VIOLATION.getState =>
-          Option(psqlException.getServerErrorMessage).flatMap(serverErrorMessage =>
-            Option(serverErrorMessage.getConstraint)
-          )
-        case other => Option(other.getCause).filterNot(_ eq other).flatMap(findUniqueConstraintViolated)
-      }
-
-    private def uniqueConstraintViolationMessage(constraint: String): String =
-      constraint match {
-        case "uq_customer_name" =>
-          "A customer with the given name already exists in this organization"
-        case "uq_customer_business_contact_email" =>
-          "A business contact with the given email already exists for this customer"
-        case "uq_customer_business_contact_phone_number" =>
-          "A business contact with the given phone number already exists for this customer"
-        case other =>
-          s"A unique constraint was violated: [$other]"
-      }
+    private val uniqueConstraintViolationMessage: PartialFunction[String, String] = {
+      case "uq_customer_name" =>
+        "A customer with the given name already exists in this organization"
+      case "uq_customer_business_contact_email" =>
+        "A business contact with the given email already exists for this customer"
+      case "uq_customer_business_contact_phone_number" =>
+        "A business contact with the given phone number already exists for this customer"
+    }
 
     private def generateCustomerID: IO[ServiceError, CustomerID] =
       idGenerator.generateID

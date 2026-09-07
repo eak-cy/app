@@ -238,11 +238,14 @@ This response looks the same whatever the email turns out to be. For an email th
 | 1. User submits details request | - Users details stored to database - User onboard stage should be updated to `PhoneVerification` - User should receive an SMS with OTP - Redirects User to Verify OTP page |
 | 2. User re-submits details request while an existing OTP is still inside the resend-cooldown window | - Submitted details are stored (this step can be used to change the phone number) - Existing OTP is reused, no new SMS is sent while inside the cooldown - Redirects User to Verify OTP page |
 | 3. User re-submits details request once the resend-cooldown has passed | - Submitted details are stored - A new OTP is generated - User should receive a new SMS with OTP - Redirects User to Verify OTP page |
+| 4. User submits a phone number that already belongs to a different account | - Nothing is stored: full name, phone number, and onboard stage all stay exactly as they were before the request - No SMS is sent - Request is rejected with a conflict error |
+| 5. User resubmits the phone number already stored on their own account | - Not treated as a conflict, because it belongs to the same account - Behaves like any other resubmission (see scenarios 2 and 3) |
 
 #### Requirements
 
 1. The person gives their full name and phone number. We save those details, move them to `PhoneVerification`, and text them a passcode.
 2. They can come back to this step to correct their phone number. We save whatever they send us each time.
+3. A phone number can belong to only one account. If the phone number given is already saved against a different account, we refuse the request and change nothing — not the name, not the phone number, and not the onboard stage. Resubmitting the phone number already saved on your own account is not a conflict.
 
 #### Request / Response / Outcome
 
@@ -251,7 +254,7 @@ This response looks the same whatever the email turns out to be. For an email th
 | **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
 | --- | --- | --- | --- | --- |
 | Full Name | `String` | 1–255 characters, trimmed | ✅ | The user full name |
-| Phone Number | `PhoneNumber` | — | ✅ | The number to send the passcode to. See **PhoneNumber** below |
+| Phone Number | `PhoneNumber` | Must not already belong to a different account | ✅ | The number to send the passcode to. See **PhoneNumber** below |
 
 **PhoneNumber**
 
@@ -272,6 +275,7 @@ This response looks the same whatever the email turns out to be. For an email th
 
 - The name and phone number are saved, replacing whatever was stored before. The stage moves to `PhoneVerification`.
 - A passcode is saved and texted to the number given, or the existing one is reused with no text sent if it is still inside its waiting period.
+- If the phone number given already belongs to a different account, nothing is saved, the stage stays as it was, and no passcode is generated or sent.
 
 #### Http Error Responses
 
@@ -280,6 +284,7 @@ This response looks the same whatever the email turns out to be. For an email th
 | 400 | `VALIDATION_ERROR` | - Form validation error |
 | 401 | `UNAUTHORIZED_ERROR` | - The access token is missing, invalid, or has expired |
 | 403 | `FORBIDDEN_ERROR` | - Invalid onboard stage |
+| 409 | `CONFLICT_ERROR` | - The phone number given already belongs to a different account |
 | 500 | `INTERNAL_SERVER_ERROR` | - Unexpected error |
 
 ### 5. User Verifies Phone Number
@@ -362,14 +367,7 @@ When looking up a passcode already waiting:
 ### Known gaps and open questions
 
 Decisions this epic has not made yet. Everything above describes what the product does today; everything here does **not** exist and needs a product answer before it can be built.
-
-#### 1. Two accounts can verify the same phone number
-
-Email is unique across accounts and enforced by the database. Phone number is not — nothing stops two accounts completing sign up on the same number. Customer records in the address book *do* have a phone uniqueness rule, so this reads more like an oversight than a decision.
-
-**To decide:** whether a phone number may belong to more than one account. If not, what the second person is told, and what happens to the accounts already sharing a number today.
-
-#### 2. Opening the phone verification page can destroy a usable passcode
+#### 1. Opening the phone verification page can destroy a usable passcode
 
 Looking up an outstanding phone passcode applies a stricter expiry rule than submitting one does. If the passcode is close enough to expiry to be inside the resend window, the lookup deletes it and reports it as expired — even though submitting that same passcode directly would still have worked.
 

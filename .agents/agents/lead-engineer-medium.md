@@ -5,4 +5,4 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 model: sonnet
 ---
 
-Read and follow `.agents/contracts/lead-engineer.md`. Accept only `MEDIUM` packages; otherwise request EM reclassification.
+Read and follow `.agents/contracts/lead-engineer.md`. Assigned tier: `MEDIUM`. Raise material scope/risk changes with EM.

@@ -40,23 +40,23 @@ Step 1 tests cover three branches: no code at all, a fresh code that gets extend
 
 **Where:** `UserForgotPasswordApiSpec`, `"POST /forgot/password"`. Assert a *new* code replaces the old one and a second email is sent.
 
-### 5. Re-submitting details while the code is still inside its waiting period
+### 5. Re-submitting a genuinely different number while the code is still inside its waiting period
 
-**Behaviour:** [User Onboarding](../pages/epics/01-user-onboarding.md), step 4, scenario 2 — details are saved again, the existing code is reused, and no new text is sent.
+**Behaviour:** [User Onboarding](../pages/epics/01-user-onboarding.md), step 4, scenario 2 — details are saved again (including a changed phone number), the existing code is reused, and no new text is sent.
 
-`"POST /onboard/details"` has five tests: one success and four gate/validation failures. There is no second call to the endpoint anywhere, so neither re-submit branch is exercised.
+**Updated 2026-09-06**, alongside the phone-uniqueness fix: `"POST /onboard/details"` now has several tests exercising the cooldown-reuse branch — "successfully re-submit onboard details within the OTP cooldown and not reset the verify attempts counter" (OTP/action-attempt only, asserts nothing about `user_details`), plus two new ones covering the caller resubmitting their *own* already-stored number, and a different account's number being rejected as a conflict, both while on cooldown. That fixed a real pre-existing gap: the reuse branch previously never wrote `full_name`/`phone_number` to the database at all (contradicting this very scenario's text); the write is now unconditional and this is proven for the self-resubmission case.
 
-This is the branch that lets someone correct a mistyped phone number, so it matters to a real user, not just to coverage.
+What's still missing is narrower than originally scoped: a case where the resubmitted number is *different from and not in conflict with* the caller's current one, proving the **new** value persists (a plain DB read, no longer blocked on anything) and that no new text is sent (still needs gap 1).
 
-**Where:** `UserOnboardApiSpec`, `"POST /onboard/details"`. Needs gap 1 to assert "no new text sent".
+**Where:** `UserOnboardApiSpec`, `"POST /onboard/details"`. The persistence half can be written today; the "no new text sent" half still needs gap 1.
 
 ### 6. Re-submitting details once the waiting period has passed
 
-**Behaviour:** [User Onboarding](../pages/epics/01-user-onboarding.md), step 4, scenario 3 — details saved, a new code generated, a new text sent.
+**Behaviour:** [User Onboarding](../pages/epics/01-user-onboarding.md), step 4, scenario 3 — a *stale, pre-existing* code is superseded: details saved, a genuinely new code generated (replacing the old one), a new text sent.
 
-Same missing second call as gap 5, opposite branch.
+Unlike gap 5, this branch (`case _` when an OTP row exists but is outside its cooldown) is still never exercised with a pre-existing OTP row: every current test in this branch starts from *no* OTP row at all (a first-ever submission), which takes the same code path but does not prove an existing, now-stale OTP gets replaced rather than just created.
 
-**Where:** `UserOnboardApiSpec`, `"POST /onboard/details"`. Needs gap 1 to assert the new text.
+**Where:** `UserOnboardApiSpec`, `"POST /onboard/details"`. Seed a pre-existing OTP row past its cooldown, then assert the OTP id/value changes and (needs gap 1) a new text is sent.
 
 ### 7. Confirmation email failing does not break a password reset
 
