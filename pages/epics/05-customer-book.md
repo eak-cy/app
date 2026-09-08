@@ -618,7 +618,7 @@ Same fields as **CustomerBusiness** ([step 1](#1-user-adds-a-customer)) — Busi
 
 | **Http Code** | **Code** | **Description** |
 | --- | --- | --- |
-| 400 | `VALIDATION_ERROR` | - The organization id header is missing |
+| 400 | `BAD_REQUEST_ERROR` | - The organization id header is missing |
 | 401 | `UNAUTHORIZED_ERROR` | - The access token is missing, invalid, or has expired |
 | 403 | `FORBIDDEN_ERROR` | - Personal onboarding is not finished - The person's role does not allow this |
 | 500 | `INTERNAL_SERVER_ERROR` | - The file is not a supported image - The AI service could not be reached, or sent back something that could not be used - Unexpected error |

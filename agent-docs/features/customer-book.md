@@ -85,6 +85,39 @@ Open decisions:
 - No unarchive; reactivation must resolve active-name conflict.
 - Singular, batch, and mixed inserts overlap; retain until client needs justify convergence.
 
+## Photo extraction
+
+`POST /extract/customer-book-photo` is a Tapir streaming endpoint, not Smithy — same reason and same transport as [Organization Management](organization-management.md#logo-upload)'s logo upload and [Catalogue](catalogue.md#image-upload)'s item-image upload: Smithy JSON routes cap at 5 MB, Tapir streams binary and allows 20 MB. See [Alternate HTTP](../project/alternate-http.md) for the shared transport mechanics this endpoint follows.
+
+Binary body; organization in the `X-Organization-ID` header. Security (`AuthorizationService.auth`): valid access JWT, `OnboardStage.completedStages`, and the caller must be `OWNER` or `ADMIN` in the organization — identical gate to [adding a customer](../../pages/epics/05-customer-book.md#1-user-adds-a-customer). No `X-File-Name` header: unlike the logo/catalogue-item uploads, nothing here is ever kept, so there is no original file name to preserve.
+
+`FileService.extractCustomersFromPhoto` runs inside one `ZIO.scoped` block, reusing the existing upload pipeline pieces but stopping short of storage:
+
+1. `FileScanner.scan` spools the incoming `ZStream[Byte]` to a temp file exactly as the two existing uploads do — same `SupportedMediaTypes.images` (`PNG`, `JPEG`, `WEBP`) content-sniffed check, same `fileServiceConfig.maxUploadBytes` cap.
+2. Unlike the logo/catalogue-item uploads, there is no `ImageProcessing.normalize` step and no `S3Client` call: the scanned file is read once into memory and base64-encoded, never written to object storage, never resized.
+3. `AIClient.extractFromImage` sends the base64 image plus a system prompt describing the extraction task (classify each recognized entry as an individual or a business; a candidate needs at least a name; note anything unclear on that candidate; flag same-kind same-name duplicates found within this one photo, never against the stored book; report how many entries were identified versus turned into candidates; summarize, in one line, what could not be processed) as an OpenAI structured-output request (`ResponseFormat.JsonSchema`, same mechanism `OpenAIClient` already uses) targeting `ExtractCustomersFromPhotoResponse` directly.
+4. The AI's structured response is returned to the caller as-is: `Entries Identified`, `Entries Processed`, `Is Duplicate`, and the unidentified-entries summary are the model's own best-effort output, not recomputed or cross-checked by the service. Nothing is written to `customer`/`customer_business_contact` or anywhere else; the step is fully stateless and safe to repeat.
+
+`CustomerIndividualCandidate`/`CustomerBusinessCandidate` each wrap the real `InsertCustomerIndividualPostRequest`/`InsertCustomerBusinessPostRequest` domain type (the same Iron-refined fields step 1 validates against) alongside `isDuplicate`/`extractionNotes`, plus `entriesIdentified`/`entriesProcessed`/`unidentifiedEntriesSummary` at the response's top level. A clean candidate can be forwarded into [step 1](../../pages/epics/05-customer-book.md#1-user-adds-a-customer) without edits; the AI is prompted to produce realistic values but nothing here re-validates them.
+
+**Accepted trade-off:** because the whole response is one structured-output JSON document decoded in a single pass, a single field that fails its Iron constraint anywhere in that document (e.g. one malformed email on one of several candidates) fails the entire decode, surfacing as one `500 INTERNAL_SERVER_ERROR` for the whole request rather than dropping just that field or candidate. OpenAI's structured-output "strict" mode reliably enforces JSON structure/types but not Iron's string `pattern` constraints during generation, so this is a real (if expected to be uncommon) failure mode, chosen deliberately over the added complexity of a lenient per-field fallback.
+
+### Key files (photo extraction)
+
+- Orchestration: `service/FileService.scala` (shared with logo/catalogue-item image uploads)
+- AI client: `clients/AIClient.scala` (new, parallel to `clients/OpenAIClient.scala` — that client and its config are untouched), `config/AIClientConfig.scala`
+- Pipeline utils (shared): `utils/FileScanner.scala`
+- Transport (shared): `tapir/FileServiceEndpoints.scala`, `tapir/tapir.scala`
+- Domain: `domain/gateway/CustomerBook.scala` (`CustomerIndividualCandidate`, `CustomerBusinessCandidate`, `ExtractCustomersFromPhotoResponse`)
+- Config: new `ai-client` section, both core/gateway-it `application.conf` copies (separate from `open-ai-client`)
+
+### Tests (photo extraction)
+
+- Acceptance: `FileApiSpec`'s `/extract/customer-book-photo` block — happy path against a wiremock-stubbed AI response, missing token (401), invalid token (401), disallowed stage (403), missing `X-Organization-ID` header (400), non-member (500), disallowed role (403), unsupported file type (500), AI-service failure (500)
+- Functional: `FileServiceSpec`'s `extractCustomersFromPhoto` block, `AIClient` mocked
+- Integration: `AIClientSpec` (new, mirrors `TwilioClientSpec`) against `src/test/resources/compose/wiremock.yaml` — asserts the outbound request shape (image content included) and response mapping
+- Unit (shared, unchanged): `FileScannerSpec` — this endpoint adds no new size/type-check behavior to cover
+
 ## Key files and config
 
 - Contract: `smithy/CustomerBookService.smithy`, `smithy/domain/CustomerBook.smithy`
