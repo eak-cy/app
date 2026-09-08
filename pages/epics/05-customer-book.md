@@ -12,6 +12,7 @@ Every organization keeps a book of the people and companies it trades with. It i
 
 - **Related** — [Organization Onboarding]({{ site.baseurl }}{% link epics/04-organization-onboarding.md %}). An organization must exist first, and every request here names which organization it is for.
 - **Out of scope** — Who may belong to an organization and what each role means. That is set up with the organization itself.
+- **Out of scope** — Checking a photo's candidates against customers already stored in the book. The only duplicate check made when reading a photo is between candidates found within that same photo.
 - **Not built yet** — Orders. The customer book exists so that orders can point at a customer later, but nothing places or records an order yet.
 - **Not built yet** — Search, filtering and paging. The list returns every active customer in one go, sorted by name.
 
@@ -45,6 +46,7 @@ Unlike the earlier epics, these steps are not a single journey. They are the sta
 4. [User Updates a Customer](#4-user-updates-a-customer)
 5. [User Manages a Business's Contacts](#5-user-manages-a-businesss-contacts)
 6. [User Archives a Customer](#6-user-archives-a-customer)
+7. [User Extracts Customers from a Photo](#7-user-extracts-customers-from-a-photo)
 
 ### Prerequisites
 
@@ -528,6 +530,99 @@ Response is empty, whether the customer was archived just now, was already archi
 | 403 | `FORBIDDEN_ERROR` | - Personal onboarding is not finished - The person's role does not allow changes |
 | 500 | `INTERNAL_SERVER_ERROR` | - Unexpected error |
 
+### 7. User Extracts Customers from a Photo
+
+**Who can reach this step: an owner or admin of the organization.**
+
+- User photographs something they already have on paper — a business card, a printed spreadsheet or grid, or a handwritten note from their own notebook listing customers — instead of typing every entry in by hand.
+- The photo is sent to an AI model to read.
+- The user gets back a list of candidate people and candidate businesses to look over, how many entries were found versus actually turned into candidates, and, if some were missed, a short note on what to look at again.
+- Nothing is stored yet. Whichever candidates the user wants to keep are added afterwards the normal way, in [step 1](#1-user-adds-a-customer).
+
+This step exists to help a business move its existing customer book into this product quickly, with as little retyping as possible.
+
+#### Business Scenarios
+
+| **Scenarios** | **Requirements** |
+| --- | --- |
+| 1. User photographs a page with several clear entries | - Each is returned as a candidate person or a candidate business, whichever the AI judges it to be - Nothing forces a business card or a grid row into one kind or the other |
+| 2. An entry has a name but something else about it is unclear or missing (a smudged phone number, no visible email) | - Still returned as a candidate, with a short, plain note on that candidate saying what was missing or unclear |
+| 3. An entry has no name the AI could make out at all | - Not returned as a candidate - Reflected only in the counts and in a short summary message describing what could not be read and where in the photo to look |
+| 4. Two entries in the same photo are the same kind and share a name, ignoring capitalisation | - Both are returned, and each is marked as a possible duplicate of the other |
+| 5. Two entries share a name but are different kinds — one looks like a person, the other a business | - Neither is marked as a duplicate. Only matching kinds count |
+| 6. The photo has more entries than could be turned into candidates | - The response says how many entries were identified in total and how many were actually turned into candidates, so the user can tell, for example, that 3 of them could not be processed |
+| 7. The photo has nothing recognizable as a customer at all | - An empty result is returned, with both counts at zero - This is not treated as an error |
+| 8. The photo is not a supported image, or is larger than the limit | - Rejected, the same as any other image upload in this product |
+| 9. The AI service cannot be reached, or sends back something that cannot be used | - Reported as a server error |
+| 10. A member with the ordinary user role tries to use this step | - Rejected. This step is limited the same way as adding a customer |
+| 11. User asks for the same photo to be read again | - Reading a photo never stores anything, so this can be repeated freely with no effect on the customer book |
+
+#### Requirements
+
+1. Every candidate is shaped exactly like adding a person or a business in [step 1](#1-user-adds-a-customer) — the same fields, the same two kinds. The AI decides which kind each entry looks like; nothing here fixes a rule for what a business card or a grid row must become.
+2. A candidate's name — and a business contact's name, when a candidate business includes one — must not be empty. That is the only rule checked here. Nothing else on a candidate is checked the way it is when actually adding a customer: an email does not have to look like a real address, a phone number does not have to be real, and a list of them does not have to carry exactly one default. The person reviews and corrects a candidate before it is actually added.
+3. An entry the photo seemed to contain but that could not be given any name at all is never returned as a candidate.
+4. The response always states how many entries were identified in total and how many were actually turned into candidates, so the person can tell at a glance that, for example, 3 entries could not be processed. When some were missed, a short summary message says what could not be read and where in the photo to look, without listing each one separately.
+5. Two candidates of the same kind found in the same photo, whose names match once capitalisation is ignored, are each marked as a possible duplicate of the other. This only ever compares candidates found within that one photo — it never looks at customers already stored in the book.
+6. The photo itself is judged the same way as any other image upload in this product: by looking inside the file, accepting only PNG, JPEG and WEBP, capped at 20 MB.
+7. Unlike the logo and catalogue item image uploads, the photo is never kept. There is no original copy and no resized copy — nothing about it is written to file storage.
+8. Nothing is stored in the customer book by this step, however it turns out. A candidate only becomes a real customer once it is sent through [Adding a customer](#1-user-adds-a-customer).
+
+#### Request / Response / Outcome
+
+**Request**
+
+The body is the photo itself. The organization it is for travels in the request's header, since the body carries the image:
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Organization ID | `UUID` | Canonical 36-character form | ✅ | Which organization's book this photo is for |
+| Image | Binary | PNG, JPEG or WEBP; up to 20 MB | ✅ | The photo to read, sent as the request body |
+
+**Response**
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Entries Identified | `Long` | Whole number, zero or more | ✅ | How many entries the photo seemed to contain in total, including ones that could not be turned into a candidate |
+| Entries Processed | `Long` | Whole number, zero or more; never greater than Entries Identified | ✅ | How many of those were actually turned into a candidate person or business |
+| Customer Individual Candidates | `CustomerIndividualCandidate[]` | May be empty | ✅ | Recognized people, in whatever order the photo listed them |
+| Customer Business Candidates | `CustomerBusinessCandidate[]` | May be empty | ✅ | Recognized businesses, in whatever order the photo listed them |
+| Unidentified Entries Summary | `String` | Concise, plain text | ❌ | Present only when Entries Processed is less than Entries Identified. A short message pointing at what could not be turned into a candidate — for example, "could not read the last 3 entries" or "could not process entries 2, 5 and 6" |
+
+**CustomerIndividualCandidate**
+
+Same fields as **CustomerIndividual** ([step 1](#1-user-adds-a-customer)) — Full Name, Emails, Phone Numbers, and address — except none of them are checked the way they are when actually adding a customer; only Full Name must be non-empty. Plus:
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Is Duplicate | `Boolean` | — | ✅ | True when another candidate of the same kind in this same response has a matching name, ignoring capitalisation |
+| Extraction Notes | `String` | Concise, plain text | ❌ | Present only when something about this candidate was missing or unclear, in one short line |
+
+**CustomerBusinessCandidate**
+
+Same fields as **CustomerBusiness** ([step 1](#1-user-adds-a-customer)) — Business Name, Emails, Phone Numbers, Tax ID, address, and Customer Business Contacts — except none of them are checked the way they are when actually adding a customer; only Business Name, and the Full Name of any contact included, must be non-empty. Plus:
+
+| **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
+| --- | --- | --- | --- | --- |
+| Is Duplicate | `Boolean` | — | ✅ | True when another candidate of the same kind in this same response has a matching name, ignoring capitalisation |
+| Extraction Notes | `String` | Concise, plain text | ❌ | Present only when something about this candidate, including one of its contacts, was missing or unclear, in one short line |
+
+**Outcome**
+
+- Nothing is stored: no customer, no contact, and no copy of the photo, anywhere.
+- The photo is sent to an outside AI service so it can be read, and is not kept afterwards, by us or in file storage.
+- Nothing in the response is remembered anywhere once it is sent. Using a candidate means sending it through [Adding a customer](#1-user-adds-a-customer), the same as anything typed in by hand.
+- Entries Identified and Entries Processed together are how a reader sees that some were missed — for example, four entries identified but only three processed — and, when that happens, the summary message says what could not be read and where to look.
+
+#### Http Error Responses
+
+| **Http Code** | **Code** | **Description** |
+| --- | --- | --- |
+| 400 | `VALIDATION_ERROR` | - The organization id header is missing |
+| 401 | `UNAUTHORIZED_ERROR` | - The access token is missing, invalid, or has expired |
+| 403 | `FORBIDDEN_ERROR` | - Personal onboarding is not finished - The person's role does not allow this |
+| 500 | `INTERNAL_SERVER_ERROR` | - The file is not a supported image - The AI service could not be reached, or sent back something that could not be used - Unexpected error |
+
 ### Known gaps and open questions
 
 Everything above describes what the product does today. Nothing in this section exists yet; each one needs a product answer before it can be built.
@@ -567,5 +662,13 @@ Contacts belong to businesses. That is a rule the service applies, not one the s
 Nothing today creates such a record. But nothing would stop a future change, or a direct data fix, from leaving a person carrying contacts that no screen would ever show.
 
 **To decide:** whether the rule should be enforced where the data is kept, rather than only in the code path that happens to write it.
+
+#### 5. Nothing limits how often a photo can be read
+
+[Extracting customers from a photo](#7-user-extracts-customers-from-a-photo) can be called as often as an owner or admin likes, with no limit per person, per organization, or overall. Each call is sent to an outside AI service, which is not free to run.
+
+Nothing today would stop this being called far more than the migration task it is meant for would ever need.
+
+**To decide:** whether a limit is needed, and if so what it should be.
 
 {% include abbreviations.md %}
