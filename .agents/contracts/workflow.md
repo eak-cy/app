@@ -15,6 +15,25 @@ Every issue, bug, and feature runs the same stages in order. A stage may not sta
 | 7 | Product completion review: do the tests and behavior cover every use case and business rule? | PO | PO returns `PRODUCT_ACCEPTANCE` — complete, or the gaps found |
 | 8 | Close: report delivered behavior, evidence, and remaining gaps | EM | User accepts, or the loop reopens at the stage that owns the gap |
 
+## New features and existing features run the same way
+
+Most work changes something that already ships: a bug, a rule that must behave differently, a field added to an existing endpoint, a new operation inside a feature that exists. Those run every stage and every gate above — the difference is that each stage starts from what is already documented and built, and works as a **delta** against it.
+
+| Stage | New feature | Change to an existing feature |
+|---|---|---|
+| 1 PO | Write the epic from the skeleton in `pages/epics/EPIC-STANDARDS.md`; add it to both indexes | Read the existing epic and its `agent-docs/features/` counterpart first, then state today's behavior and the wanted behavior side by side, and edit that epic in place — leaving untouched parts alone |
+| 2–3 EM | Assess a green field; plan the layers to add | Assess the real code path and its callers, tests, data, and clients; the concerns are regression, compatibility, migration, and which existing tests encode the old behavior. Update the existing feature doc rather than creating one |
+| 4 Lead | Skeleton: new interfaces and signatures, unimplemented, plus failing tests | Skeleton: the updated docs for the agreed behavior, the new signature added unimplemented or the existing one left as it is, plus the failing test that pins the **new** behavior against the code that exists |
+| 5 Lead | Implement outward through the layers | Slice by kind of edit: update the docs it makes true, adapt or add the test, add the new function, change the existing function, migrate the data — each still at most 3 files, each still approved and committed |
+| 6–8 | Reviews as above | Reviews as above, plus: what used to work still works, and every behavior change is intended and documented |
+
+Two rules exist only for existing features, and they are not optional:
+
+- **Never quietly change what already passes.** An existing test that asserts the old behavior is changed only because the user agreed that behavior changes, and the slice report says which assertions changed and why. Deleting, skipping, or weakening a test to make a slice go green is prohibited.
+- **State the before and after.** Every stage describes the change as "today X, after this Y" for the behavior, the docs, and the data. A doc that still describes the old behavior after the slice that changed it is an unfinished slice.
+
+Do not create a new epic or a new feature doc for work that belongs to an existing one; find and update it. If nothing fits, that is a question for the user before writing a new one.
+
 ## Questions before assumptions, at every level
 
 This applies to every role and both tiers, with no exception for small work, obvious-looking work, or a role's own area of expertise.

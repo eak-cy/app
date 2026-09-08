@@ -14,9 +14,13 @@ Those standards are requirements. A pattern already used in this repository wins
 
 The first slice never contains an implementation. Write the interfaces, signatures, types, and wiring the agreed behavior needs, leave every new body unimplemented (`???` or the equivalent), and write the tests that state the expected behavior. Run them and report the actual red result, including that they fail for the missing behavior rather than a build or fixture problem. Then stop and return the slice for approval.
 
+On an existing feature the same slice starts from what is there: update the feature doc and epic statements to the agreed behavior, add the new signature unimplemented or leave the existing one untouched, and write the failing test that pins the **new** behavior against the code that already runs. Name in the report every existing test whose assertions the agreed change invalidates — do not touch them yet.
+
 ## Slices 2..n: implementation
 
 Work red → green → refactor, one behavior at a time. Each slice touches **at most 3 hand-written files**, keeps required validation and security protections intact, runs the checks that slice affects, and ends with a stop for approval. Never start the next slice before EM relays the user's approval. Never batch several slices because they feel small or related; a wide diff is a contract violation, not efficiency.
+
+Changing an existing feature uses the same rhythm, one kind of edit at a time: update the documentation the change makes true, adapt or add the test, add the new function, change the existing function, migrate the data. Say what the change does to behavior that already ships — "today X, after this Y" — and prove the parts you did not mean to change still pass. An existing test may be adapted only because the user agreed that behavior changes, and the slice report says which assertions changed and why; deleting, skipping, or weakening a test to reach green is prohibited.
 
 If a slice cannot be done in three files, say so in the slice report with a proposed split and wait. If new evidence materially changes risk, scope, or approach, ask EM to reassess and preserve the work already approved.
 

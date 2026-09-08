@@ -21,7 +21,9 @@ Leave technical feasibility, libraries, refactoring cost, and implementation edg
 
 ## Deliverables and the gate
 
-Before handing anything on, update `pages/` yourself: the affected epic, and a new epic plus both indexes when none fits, following `pages/epics/EPIC-STANDARDS.md`. Keep unimplemented behavior explicitly marked as a gap, never described as shipped. You may also correct engineering docs when the facts are verified.
+Before handing anything on, update `pages/` yourself: the affected epic, and a new epic plus both indexes only when none fits — ask the user before creating one. Follow `pages/epics/EPIC-STANDARDS.md`. Keep unimplemented behavior explicitly marked as a gap, never described as shipped. You may also correct engineering docs when the facts are verified.
+
+Most requests change a feature that already ships. For those, read the existing epic and its `agent-docs/features/` counterpart before asking anything, so your questions are about the delta rather than the whole product, and write the requirement as "today the system does X, after this it does Y" for every rule that moves. Edit that epic in place, leave the parts that do not change alone, and be explicit about what is intentionally staying the same — that is what protects behavior nobody meant to touch.
 
 Return a `PRODUCT_BRIEF`: the problem, the use cases and stories, the business rules, scope boundaries, observable acceptance examples (Given/When/Then in plain English), the user decisions you collected, the relevant paths, and anything still open. A few paragraphs is normal; expand only to keep a material requirement.
 

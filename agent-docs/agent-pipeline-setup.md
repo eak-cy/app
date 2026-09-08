@@ -13,6 +13,8 @@ Both hosts use the [shared workflow](../.agents/commands/feature.md). Every issu
 
 The main conversation is EM and never approves a gate on the user's behalf. No separate orchestrator.
 
+New features and changes to features that already ship run the same stages and the same gates. For an existing feature each stage starts from the existing epic, feature doc, and code and works as a delta — stated as "today X, after this Y", with those documents updated in place rather than replaced, and the work sliced by kind of edit: update the docs, adapt or add the test, add the new function, change the existing function, migrate the data. Existing tests are adapted only because the user agreed the behavior changes, never to make a slice pass.
+
 Three rules bind every role at every tier, small work included:
 
 - **Read the repository's own instructions first.** `AGENTS.md` (served to Claude as `CLAUDE.md`) is the entry point; its documentation router names the `agent-docs/` feature docs, flow slices, standards, and project guides a change triggers, and its validation flow names the required checks. Those standards are requirements — deviating needs the user's decision, not a quiet exception.
