@@ -94,8 +94,8 @@ Binary body; organization in the `X-Organization-ID` header. Security (`Authoriz
 `FileService.extractCustomersFromPhoto` runs inside one `ZIO.scoped` block, reusing the existing upload pipeline pieces but stopping short of storage:
 
 1. `FileScanner.scan` spools the incoming `ZStream[Byte]` to a temp file exactly as the two existing uploads do — same `SupportedMediaTypes.images` (`PNG`, `JPEG`, `WEBP`) content-sniffed check, same `fileServiceConfig.maxUploadBytes` cap.
-2. Unlike the logo/catalogue-item uploads, there is no `ImageProcessing.normalize` step and no `S3Client` call: the scanned file is read once into memory and base64-encoded, never written to object storage, never resized.
-3. `AIClient.extractFromImage` sends the base64 image plus a system prompt describing the extraction task (classify each recognized entry as an individual or a business; a candidate needs at least a name; note anything unclear on that candidate; flag same-kind same-name duplicates found within this one photo, never against the stored book; report how many entries were identified versus turned into candidates; summarize, in one line, what could not be processed) as an OpenAI structured-output request (`ResponseFormat.JsonSchema`, same mechanism `OpenAIClient` already uses) targeting `ExtractCustomersFromPhotoResponse` directly.
+2. Unlike the logo/catalogue-item uploads, there is no `ImageProcessing.normalize` step and no `S3Client` call: `FileService` passes the scanned byte stream straight through to `AIClient`, never writing it to object storage or resizing it.
+3. `AIClient.extractFromImage[A](imageByteStream: ZStream[Any, Throwable, Byte], instructions: String)(using Schema[A], JsonValueCodec[A])` consumes that stream **exactly once** — collecting it, detecting its mime type, and base64-encoding it, all inside the client — mirroring how `S3ClientOrganizationMedia`'s upload methods take a `ZStream` and do their own internal consumption, rather than `FileService` collecting/detecting the type itself first. It sends the base64 image plus a system prompt (the `instructions` argument, owned by `FileService`, not `AIClient`) describing the extraction task (classify each recognized entry as an individual or a business; a candidate needs at least a name; note anything unclear on that candidate; flag same-kind same-name duplicates found within this one photo, never against the stored book; report how many entries were identified versus turned into candidates; summarize, in one line, what could not be processed) as an OpenAI structured-output request (`ResponseFormat.JsonSchema`, same mechanism `OpenAIClient` already uses) targeting `ExtractCustomersFromPhotoResponse` directly.
 4. The AI's structured response is returned to the caller as-is: `Entries Identified`, `Entries Processed`, `Is Duplicate`, and the unidentified-entries summary are the model's own best-effort output, not recomputed or cross-checked by the service. Nothing is written to `customer`/`customer_business_contact` or anywhere else; the step is fully stateless and safe to repeat.
 
 `CustomerIndividualCandidate`/`CustomerBusinessCandidate` each wrap the real `InsertCustomerIndividualPostRequest`/`InsertCustomerBusinessPostRequest` domain type (the same Iron-refined fields step 1 validates against) alongside `isDuplicate`/`extractionNotes`, plus `entriesIdentified`/`entriesProcessed`/`unidentifiedEntriesSummary` at the response's top level. A clean candidate can be forwarded into [step 1](../../pages/epics/05-customer-book.md#1-user-adds-a-customer) without edits; the AI is prompted to produce realistic values but nothing here re-validates them.
@@ -113,10 +113,19 @@ Binary body; organization in the `X-Organization-ID` header. Security (`Authoriz
 
 ### Tests (photo extraction)
 
+Two distinct files are named `AIClientSpec` in different packages — not a typo, they cover different things:
+
+- `unit/clients/AIClientSpec.scala` — a plain, no-dependency test of `AIClient` itself (mirrors the `unit/<layer>` pattern already used for `FileScannerSpec`/`HealthCheckServiceSpec`/`JwtServiceSpec`), not an `it` integration spec.
+- `it/AIClientSpec.scala` — the real integration spec against a wiremock-stubbed OpenAI HTTP endpoint (mirrors `TwilioClientSpec`, per [External client](../project/external-client.md)), asserting the outbound request shape (image content included) and response mapping.
+
+Target coverage, ground each case in the epic's own [Business Scenarios table](../../pages/epics/05-customer-book.md#7-user-extracts-customers-from-a-photo) rather than a generic success/failure pair — every numbered scenario there (clear entries, an entry with something unclear, no legible name, same-kind duplicate names, different-kind same names, nothing recognizable, unsupported/oversized file, AI unreachable, disallowed role, repeat calls) is a candidate test case once the real implementation lands:
+
 - Acceptance: `FileApiSpec`'s `/extract/customer-book-photo` block — happy path against a wiremock-stubbed AI response, missing token (401), invalid token (401), disallowed stage (403), missing `X-Organization-ID` header (400), non-member (500), disallowed role (403), unsupported file type (500), AI-service failure (500)
-- Functional: `FileServiceSpec`'s `extractCustomersFromPhoto` block, `AIClient` mocked
-- Integration: `AIClientSpec` (new, mirrors `TwilioClientSpec`) against `src/test/resources/compose/wiremock.yaml` — asserts the outbound request shape (image content included) and response mapping
-- Unit (shared, unchanged): `FileScannerSpec` — this endpoint adds no new size/type-check behavior to cover
+- Functional: `FileServiceSpec`'s `extractCustomersFromPhoto` block, `AIClient` mocked — cover the scenarios above that don't require a real HTTP round-trip (e.g. AI-service failure mapped to `ServiceError.InternalServerError`)
+- Integration: `it/AIClientSpec.scala` (new, mirrors `TwilioClientSpec`) against `src/test/resources/compose/wiremock.yaml`
+- Unit: `unit/clients/AIClientSpec.scala` (new, see above); `FileScannerSpec` (shared, unchanged — this endpoint adds no new size/type-check behavior to cover)
+
+**Status (photo extraction):** skeleton only. `AIClient` and `FileService.extractCustomersFromPhoto` are unimplemented stubs (die with `NotImplementedError`); their tests currently pin that stub behavior under a target-behavior description, not the real success/failure scenarios above — those land as the remaining slices implement the real orchestration.
 
 ## Key files and config
 

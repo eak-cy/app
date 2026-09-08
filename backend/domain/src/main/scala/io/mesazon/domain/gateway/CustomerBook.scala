@@ -100,3 +100,25 @@ case class InsertCustomersPostRequest(
     customerBusinesses: List[InsertCustomerBusinessPostRequest],
     customerIndividuals: List[InsertCustomerIndividualPostRequest],
 )
+
+// Photo extraction
+
+case class CustomerIndividualCandidate(
+    candidate: InsertCustomerIndividualPostRequest,
+    isDuplicate: Boolean,
+    extractionNotes: Option[String],
+)
+
+case class CustomerBusinessCandidate(
+    candidate: InsertCustomerBusinessPostRequest,
+    isDuplicate: Boolean,
+    extractionNotes: Option[String],
+)
+
+case class ExtractCustomersFromPhotoResponse(
+    entriesIdentified: Long,
+    entriesProcessed: Long,
+    customerIndividualCandidates: List[CustomerIndividualCandidate],
+    customerBusinessCandidates: List[CustomerBusinessCandidate],
+    unidentifiedEntriesSummary: Option[String],
+)

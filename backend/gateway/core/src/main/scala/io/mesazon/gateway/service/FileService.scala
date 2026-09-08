@@ -23,6 +23,11 @@ trait FileService[F[_]] {
       catalogueItemImageOriginalFileName: ImageOriginalFileName,
       catalogueItemImageByteStream: ZStream[Any, Throwable, Byte],
   ): F[Unit]
+
+  def extractCustomersFromPhoto(
+      organizationID: OrganizationID,
+      customerBookPhotoByteStream: ZStream[Any, Throwable, Byte],
+  ): F[ExtractCustomersFromPhotoResponse]
 }
 
 object FileService {
@@ -136,6 +141,12 @@ object FileService {
           imageAssetOptUpdate = Some(catalogueItemImageAsset),
         )
       } yield ())
+
+    override def extractCustomersFromPhoto(
+        organizationID: OrganizationID,
+        customerBookPhotoByteStream: ZStream[Any, Throwable, Byte],
+    ): ServiceTask[ExtractCustomersFromPhotoResponse] =
+      ZIO.die(new NotImplementedError("FileService.extractCustomersFromPhoto is not yet implemented"))
   }
 
   def observed(service: FileService[ServiceTask]): FileService[TapirTask] =
@@ -168,6 +179,14 @@ object FileService {
               catalogueItemImageOriginalFileName,
               catalogueItemImageByteStream,
             )
+        )
+
+      override def extractCustomersFromPhoto(
+          organizationID: OrganizationID,
+          customerBookPhotoByteStream: ZStream[Any, Throwable, Byte],
+      ): TapirTask[ExtractCustomersFromPhotoResponse] =
+        HttpErrorHandler.errorResponseHandlerTapir(
+          service.extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
         )
     }
 

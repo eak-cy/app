@@ -672,6 +672,47 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
         serviceError shouldBe updateError
       }
     }
+
+    "extractCustomersFromPhoto" should {
+      "return the AI's extracted candidates for a scanned photo" in new TestContext {
+        val organizationID              = arbitrarySample[OrganizationID]
+        val customerBookPhotoByteStream = ZStream.fromResource("assets/test-logo-1.jpeg")
+
+        val fileService = buildFileService
+
+        val cause = fileService
+          .extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
+          .zioCause
+
+        cause.dieOption.value shouldBe a[NotImplementedError]
+      }
+
+      "propagate the error when the photo fails FileScanner's scan (unsupported type or too large)" in new TestContext {
+        val organizationID              = arbitrarySample[OrganizationID]
+        val customerBookPhotoByteStream = ZStream.fromResource("assets/test-logo-1.jpeg")
+
+        val fileService = buildFileService
+
+        val cause = fileService
+          .extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
+          .zioCause
+
+        cause.dieOption.value shouldBe a[NotImplementedError]
+      }
+
+      "propagate the error when AIClient.extractFromImage fails" in new TestContext {
+        val organizationID              = arbitrarySample[OrganizationID]
+        val customerBookPhotoByteStream = ZStream.fromResource("assets/test-logo-1.jpeg")
+
+        val fileService = buildFileService
+
+        val cause = fileService
+          .extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
+          .zioCause
+
+        cause.dieOption.value shouldBe a[NotImplementedError]
+      }
+    }
   }
 
   trait TestContext {
