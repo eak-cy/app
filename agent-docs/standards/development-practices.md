@@ -18,11 +18,14 @@ Apply behavior-driven development (BDD), domain-driven design (DDD), and test-dr
 
 ## TDD: prove the change in small steps
 
+0. **Skeleton:** the first slice declares the interfaces, signatures, types, and wiring the agreed behavior needs, leaves every new body unimplemented, and states the expected behavior as tests. Report the real red result and stop for approval before implementing anything.
 1. **Red:** before changing production behavior, add or adapt a focused test for the next agreed behavior or reproduce the bug with an existing test. Run it and confirm it fails for the intended missing behavior, not an unrelated build, fixture, or environment problem.
 2. **Green:** implement the smallest correct change that makes that test pass. Keep required validation and security protections intact.
 3. **Refactor:** improve the touched code within the agreed scope while keeping relevant tests passing. Refactoring is optional when no improvement is needed.
 
 Use the lowest test layer that proves the behavior; add integration or acceptance coverage when the changed boundary requires it. Work incrementally rather than writing the entire feature before testing. Existing regression tests can supply the red step; duplicate tests are unnecessary.
+
+Each red/green/refactor step is one reviewable slice of **at most 3 hand-written files**, ending with a stop for the user's approval, so changes are read like pair programming. Wide multi-file drops are prohibited; when the next behavior cannot fit, propose a split instead of widening the slice. See `.agents/contracts/workflow.md` for the stages and gates around this cycle.
 
 Documentation/configuration-only edits and behavior-preserving mechanical changes do not need an artificial failing test. For migrations, generated contracts, or infrastructure changes, use the applicable slice's meaningful validation rather than a contrived unit test. If the environment blocks the red/green cycle, report the gap; never claim to have observed a failure or pass that was not run.
 
