@@ -11,6 +11,26 @@ given Schema[AssistantResponse] = Schema.derived[AssistantResponse]
 
 given JsonValueCodec[AssistantResponse] = JsonCodecMaker.make[AssistantResponse]
 
+given Schema[PhoneNumber] = Schema.derived[PhoneNumber]
+
+given Schema[CustomerEmailEntryRequest] = Schema.derived[CustomerEmailEntryRequest]
+
+given Schema[CustomerPhoneNumberEntryRequest] = Schema.derived[CustomerPhoneNumberEntryRequest]
+
+given Schema[InsertCustomerBusinessContact] = Schema.derived[InsertCustomerBusinessContact]
+
+given Schema[InsertCustomerIndividualPostRequest] = Schema.derived[InsertCustomerIndividualPostRequest]
+
+given Schema[InsertCustomerBusinessPostRequest] = Schema.derived[InsertCustomerBusinessPostRequest]
+
+given Schema[CustomerIndividualCandidate] = Schema.derived[CustomerIndividualCandidate]
+
+given Schema[CustomerBusinessCandidate] = Schema.derived[CustomerBusinessCandidate]
+
+given Schema[ExtractCustomersFromPhotoResponse] = Schema.derived[ExtractCustomersFromPhotoResponse]
+
+given JsonValueCodec[ExtractCustomersFromPhotoResponse] = JsonCodecMaker.make[ExtractCustomersFromPhotoResponse]
+
 private final case class TapirServerErrorBody(code: String, message: String)
 
 private given JsonValueCodec[TapirServerErrorBody] = JsonCodecMaker.make[TapirServerErrorBody]

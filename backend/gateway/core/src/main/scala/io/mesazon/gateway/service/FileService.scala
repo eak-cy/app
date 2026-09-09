@@ -2,8 +2,9 @@ package io.mesazon.gateway.service
 
 import io.mesazon.domain.gateway.*
 import io.mesazon.gateway.HttpErrorHandler
-import io.mesazon.gateway.clients.S3ClientOrganizationMedia
+import io.mesazon.gateway.clients.{AIClient, S3ClientOrganizationMedia}
 import io.mesazon.gateway.config.FileServiceConfig
+import io.mesazon.gateway.json.given
 import io.mesazon.gateway.repository.{CatalogueRepository, OrganizationManagementRepository}
 import io.mesazon.gateway.tapir.TapirTask
 import io.mesazon.gateway.utils.*
@@ -32,6 +33,29 @@ trait FileService[F[_]] {
 
 object FileService {
 
+  private[gateway] val extractCustomersFromPhotoInstructions =
+    """You are reading a photo of a paper customer list, grid, or business card for a business-management product.
+      |Find every entry that looks like a person or a business the caller trades with.
+      |For each entry, decide freely whether it looks like an individual or a business - there is no fixed rule
+      |mapping a source (e.g. a business card) to one kind or the other.
+      |Only return an entry as a candidate if you can make out a name for it. If you cannot make out any name for
+      |an entry, do not return it as a candidate at all - just count it.
+      |For a candidate business, only include a business contact if you can make out that contact's name.
+      |For every field other than a name, try to produce a realistic, usable value (a real-looking email, a phone
+      |number with enough information to be dialed, trimmed non-empty text) but this is best-effort, not required
+      |to be perfectly accurate. Never send an empty string for an optional field - omit the field entirely instead.
+      |If something about a candidate is missing or unclear (e.g. a smudged phone number, no visible email), say so
+      |in one short, plain sentence in that candidate's extraction notes; otherwise leave the notes out entirely.
+      |Compare candidates only against each other within this same photo, never against any other data. Two
+      |candidates of the same kind (both individuals or both businesses) whose names match once capitalisation is
+      |ignored are each a duplicate of the other; two candidates of different kinds are never duplicates of each
+      |other even when their names match.
+      |Report how many entries the photo seemed to contain in total, and how many of those you actually turned into
+      |candidates. If some entries could not be turned into candidates, add one short, plain-text summary line
+      |describing what could not be read and where in the photo to look; otherwise leave that summary out entirely.
+      |If the photo has nothing recognizable as a customer at all, return both counts as zero and empty candidate
+      |lists rather than treating that as an error.""".stripMargin
+
   private final class FileServiceImpl(
       fileServiceConfig: FileServiceConfig,
       organizationManagementRepository: OrganizationManagementRepository,
@@ -39,6 +63,7 @@ object FileService {
       fileScanner: FileScanner,
       imageProcessing: ImageProcessing,
       s3ClientOrganizationMedia: S3ClientOrganizationMedia,
+      aiClient: AIClient,
   ) extends FileService[ServiceTask] {
 
     override def uploadOrganizationLogo(
@@ -145,8 +170,18 @@ object FileService {
     override def extractCustomersFromPhoto(
         organizationID: OrganizationID,
         customerBookPhotoByteStream: ZStream[Any, Throwable, Byte],
-    ): ServiceTask[ExtractCustomersFromPhotoResponse] =
-      ZIO.die(new NotImplementedError("FileService.extractCustomersFromPhoto is not yet implemented"))
+    ): ServiceTask[ExtractCustomersFromPhotoResponse] = ZIO.scoped(for {
+      customerBookPhotoScanOutput <- fileScanner.scan(
+        customerBookPhotoByteStream,
+        SupportedMediaType.images,
+        fileServiceConfig.maxUploadBytes,
+      )
+      extractCustomersFromPhotoResponse <- aiClient.extractFromImage[ExtractCustomersFromPhotoResponse](
+        customerBookPhotoScanOutput.fileByteStreamScanned,
+        customerBookPhotoScanOutput.supportedMediaType,
+        extractCustomersFromPhotoInstructions,
+      )
+    } yield extractCustomersFromPhotoResponse)
   }
 
   def observed(service: FileService[ServiceTask]): FileService[TapirTask] =

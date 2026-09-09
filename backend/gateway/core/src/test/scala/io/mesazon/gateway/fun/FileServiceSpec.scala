@@ -1,8 +1,9 @@
 package io.mesazon.gateway.fun
 
 import io.mesazon.domain.gateway.*
-import io.mesazon.gateway.clients.S3ClientOrganizationMedia
+import io.mesazon.gateway.clients.{AIClient, S3ClientOrganizationMedia}
 import io.mesazon.gateway.config.FileServiceConfig
+import io.mesazon.gateway.mock.Mocks
 import io.mesazon.gateway.repository.*
 import io.mesazon.gateway.repository.domain.*
 import io.mesazon.gateway.service.*
@@ -85,7 +86,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val response = fileService
           .uploadOrganizationLogo(
@@ -112,7 +113,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once()
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadOrganizationLogo(
@@ -152,7 +153,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadOrganizationLogo(
@@ -201,7 +202,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadOrganizationLogo(
@@ -286,7 +287,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadOrganizationLogo(
@@ -377,7 +378,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val response = fileService
           .uploadCatalogueItemImage(
@@ -404,7 +405,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once()
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadCatalogueItemImage(
@@ -437,7 +438,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once()
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadCatalogueItemImage(
@@ -464,7 +465,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once()
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadCatalogueItemImage(
@@ -507,7 +508,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadCatalogueItemImage(
@@ -564,7 +565,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadCatalogueItemImage(
@@ -630,7 +631,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadCatalogueItemImage(
@@ -722,7 +723,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             .once(),
         )
 
-        val fileService = buildFileService
+        val fileService = buildFileService(aiClientMock)
 
         val serviceError = fileService
           .uploadCatalogueItemImage(
@@ -742,39 +743,125 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
         val organizationID              = arbitrarySample[OrganizationID]
         val customerBookPhotoByteStream = ZStream.fromResource("assets/test-logo-1.jpeg")
 
-        val fileService = buildFileService
+        val customerBookPhotoScanOutput: FileScannerScanOutput = (
+          fileByteStreamScanned = FileByteStreamScanned(ZStream.fromResource("assets/test-logo-1.jpeg")),
+          supportedMediaType = SupportedMediaType.JPEG,
+          fileBytesSize = FileBytesSize.assume(1L),
+        )
 
-        val cause = fileService
+        val customerIndividualCandidate = CustomerIndividualCandidate(
+          candidate = arbitrarySample[InsertCustomerIndividualPostRequest],
+          isDuplicate = false,
+          extractionNotes = None,
+        )
+
+        val customerBusinessCandidate = CustomerBusinessCandidate(
+          candidate = arbitrarySample[InsertCustomerBusinessPostRequest],
+          isDuplicate = false,
+          extractionNotes = None,
+        )
+
+        val extractCustomersFromPhotoResponse = ExtractCustomersFromPhotoResponse(
+          entriesIdentified = 2L,
+          entriesProcessed = 2L,
+          customerIndividualCandidates = List(customerIndividualCandidate),
+          customerBusinessCandidates = List(customerBusinessCandidate),
+          unidentifiedEntriesSummary = None,
+        )
+
+        fileScannerMock.scan
+          .expects(customerBookPhotoByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
+          .returns(ZIO.succeed(customerBookPhotoScanOutput))
+          .once()
+
+        val extractFromImageCallsRef =
+          Ref.make(List.empty[(FileByteStreamScanned, SupportedMediaType, String)]).zioValue
+        val aiClient = new Mocks.AIClientMock(ZIO.succeed(extractCustomersFromPhotoResponse), extractFromImageCallsRef)
+
+        val fileService = buildFileService(aiClient)
+
+        val response = fileService
           .extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
-          .zioCause
+          .zioValue
 
-        cause.dieOption.value shouldBe a[NotImplementedError]
+        response shouldBe extractCustomersFromPhotoResponse
+
+        extractFromImageCallsRef.refValue shouldBe List(
+          (
+            customerBookPhotoScanOutput.fileByteStreamScanned,
+            customerBookPhotoScanOutput.supportedMediaType,
+            FileService.extractCustomersFromPhotoInstructions,
+          )
+        )
       }
 
       "propagate the error when the photo fails FileScanner's scan (unsupported type or too large)" in new TestContext {
         val organizationID              = arbitrarySample[OrganizationID]
         val customerBookPhotoByteStream = ZStream.fromResource("assets/test-logo-1.jpeg")
 
-        val fileService = buildFileService
+        val scanError = ServiceError.InternalServerError.UnexpectedError(
+          "Unsupported file type: [text/plain]. Supported file types are: [image/png, image/jpeg, image/webp]"
+        )
 
-        val cause = fileService
+        fileScannerMock.scan
+          .expects(customerBookPhotoByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
+          .returns(ZIO.fail(scanError))
+          .once()
+
+        val extractFromImageCallsRef =
+          Ref.make(List.empty[(FileByteStreamScanned, SupportedMediaType, String)]).zioValue
+        val aiClient = new Mocks.AIClientMock(
+          ZIO.die(new NotImplementedError("AIClient.extractFromImage should not be called")),
+          extractFromImageCallsRef,
+        )
+
+        val fileService = buildFileService(aiClient)
+
+        val serviceError = fileService
           .extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
-          .zioCause
+          .zioError
 
-        cause.dieOption.value shouldBe a[NotImplementedError]
+        serviceError shouldBe scanError
+
+        extractFromImageCallsRef.refValue shouldBe List.empty
       }
 
       "propagate the error when AIClient.extractFromImage fails" in new TestContext {
         val organizationID              = arbitrarySample[OrganizationID]
         val customerBookPhotoByteStream = ZStream.fromResource("assets/test-logo-1.jpeg")
 
-        val fileService = buildFileService
+        val customerBookPhotoScanOutput: FileScannerScanOutput = (
+          fileByteStreamScanned = FileByteStreamScanned(ZStream.fromResource("assets/test-logo-1.jpeg")),
+          supportedMediaType = SupportedMediaType.JPEG,
+          fileBytesSize = FileBytesSize.assume(1L),
+        )
 
-        val cause = fileService
+        val aiClientError = ServiceError.InternalServerError.UnexpectedError("Unable to send message to AI")
+
+        fileScannerMock.scan
+          .expects(customerBookPhotoByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
+          .returns(ZIO.succeed(customerBookPhotoScanOutput))
+          .once()
+
+        val extractFromImageCallsRef =
+          Ref.make(List.empty[(FileByteStreamScanned, SupportedMediaType, String)]).zioValue
+        val aiClient = new Mocks.AIClientMock(ZIO.fail(aiClientError), extractFromImageCallsRef)
+
+        val fileService = buildFileService(aiClient)
+
+        val serviceError = fileService
           .extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
-          .zioCause
+          .zioError
 
-        cause.dieOption.value shouldBe a[NotImplementedError]
+        serviceError shouldBe aiClientError
+
+        extractFromImageCallsRef.refValue shouldBe List(
+          (
+            customerBookPhotoScanOutput.fileByteStreamScanned,
+            customerBookPhotoScanOutput.supportedMediaType,
+            FileService.extractCustomersFromPhotoInstructions,
+          )
+        )
       }
     }
   }
@@ -789,8 +876,9 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
     val organizationManagementRepositoryMock = mock[OrganizationManagementRepository]
     val catalogueRepositoryMock              = mock[CatalogueRepository]
     val s3ClientOrganizationMediaMock        = mock[S3ClientOrganizationMedia]
+    val aiClientMock                         = mock[AIClient]
 
-    def buildFileService: FileService[ServiceTask] = ZIO
+    def buildFileService(aiClient: AIClient): FileService[ServiceTask] = ZIO
       .service[FileService[ServiceTask]]
       .provide(
         FileService.local,
@@ -799,6 +887,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
         ZLayer.succeed(imageProcessingMock),
         ZLayer.succeed(organizationManagementRepositoryMock),
         ZLayer.succeed(catalogueRepositoryMock),
+        ZLayer.succeed(aiClient),
         ZLayer.succeed(s3ClientOrganizationMediaMock),
       )
       .zioValue
