@@ -44,11 +44,19 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
 
         inSequence(
           fileScannerMock.scan
-            .expects(organizationLogoImageByteStream, SupportedMediaTypes.images, fileServiceConfig.maxUploadBytes)
-            .returns(ZIO.succeed(scannedByteStream))
+            .expects(organizationLogoImageByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.succeed(normalizeResult))
             .once(),
           s3ClientOrganizationMediaMock.uploadImageOrganizationLogo
@@ -99,7 +107,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
 
         inSequence(
           fileScannerMock.scan
-            .expects(organizationLogoImageByteStream, SupportedMediaTypes.images, fileServiceConfig.maxUploadBytes)
+            .expects(organizationLogoImageByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
             .returns(ZIO.fail(scanError))
             .once()
         )
@@ -127,11 +135,19 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
 
         inSequence(
           fileScannerMock.scan
-            .expects(organizationLogoImageByteStream, SupportedMediaTypes.images, fileServiceConfig.maxUploadBytes)
-            .returns(ZIO.succeed(scannedByteStream))
+            .expects(organizationLogoImageByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.fail(normalizeError))
             .once(),
         )
@@ -164,11 +180,19 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
 
         inSequence(
           fileScannerMock.scan
-            .expects(organizationLogoImageByteStream, SupportedMediaTypes.images, fileServiceConfig.maxUploadBytes)
-            .returns(ZIO.succeed(scannedByteStream))
+            .expects(organizationLogoImageByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.succeed(normalizeResult))
             .once(),
           s3ClientOrganizationMediaMock.uploadImageOrganizationLogo
@@ -221,11 +245,19 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
 
         inSequence(
           fileScannerMock.scan
-            .expects(organizationLogoImageByteStream, SupportedMediaTypes.images, fileServiceConfig.maxUploadBytes)
-            .returns(ZIO.succeed(scannedByteStream))
+            .expects(organizationLogoImageByteStream, SupportedMediaType.images, fileServiceConfig.maxUploadBytes)
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.succeed(normalizeResult))
             .once(),
           s3ClientOrganizationMediaMock.uploadImageOrganizationLogo
@@ -311,13 +343,21 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
           fileScannerMock.scan
             .expects(
               catalogueItemImageByteStream,
-              SupportedMediaTypes.images,
+              SupportedMediaType.images,
               fileServiceConfig.maxUploadBytes,
             )
-            .returns(ZIO.succeed(scannedByteStream))
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.succeed(normalizeResult))
             .once(),
           s3ClientOrganizationMediaMock.uploadImageCatalogueItem
@@ -460,7 +500,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
           fileScannerMock.scan
             .expects(
               catalogueItemImageByteStream,
-              SupportedMediaTypes.images,
+              SupportedMediaType.images,
               fileServiceConfig.maxUploadBytes,
             )
             .returns(ZIO.fail(scanError))
@@ -505,13 +545,21 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
           fileScannerMock.scan
             .expects(
               catalogueItemImageByteStream,
-              SupportedMediaTypes.images,
+              SupportedMediaType.images,
               fileServiceConfig.maxUploadBytes,
             )
-            .returns(ZIO.succeed(scannedByteStream))
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.fail(normalizeError))
             .once(),
         )
@@ -559,13 +607,21 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
           fileScannerMock.scan
             .expects(
               catalogueItemImageByteStream,
-              SupportedMediaTypes.images,
+              SupportedMediaType.images,
               fileServiceConfig.maxUploadBytes,
             )
-            .returns(ZIO.succeed(scannedByteStream))
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.succeed(normalizeResult))
             .once(),
           s3ClientOrganizationMediaMock.uploadImageCatalogueItem
@@ -632,13 +688,21 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
           fileScannerMock.scan
             .expects(
               catalogueItemImageByteStream,
-              SupportedMediaTypes.images,
+              SupportedMediaType.images,
               fileServiceConfig.maxUploadBytes,
             )
-            .returns(ZIO.succeed(scannedByteStream))
+            .returns(
+              ZIO.succeed(
+                (
+                  fileByteStreamScanned = scannedByteStream,
+                  supportedMediaType = SupportedMediaType.JPEG,
+                  fileBytesSize = FileBytesSize.assume(1L),
+                )
+              )
+            )
             .once(),
           imageProcessingMock.normalize
-            .expects(scannedByteStream, SupportedMediaTypes.images)
+            .expects(scannedByteStream, SupportedMediaType.images)
             .returns(ZIO.succeed(normalizeResult))
             .once(),
           s3ClientOrganizationMediaMock.uploadImageCatalogueItem

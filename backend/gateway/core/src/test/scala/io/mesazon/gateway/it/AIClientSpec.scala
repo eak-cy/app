@@ -6,6 +6,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 import io.mesazon.domain.gateway.*
 import io.mesazon.gateway.clients.AIClient
 import io.mesazon.gateway.config.AIClientConfig
+import io.mesazon.gateway.utils.FileByteStreamScanned
 import io.mesazon.testkit.base.*
 import io.mesazon.wiremock.WiremockClient
 import io.mesazon.wiremock.WiremockClient.WiremockClientConfig
@@ -86,10 +87,10 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
           )
           .zioValue
 
-        val imageByteStream = ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5))
+        val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
 
         val extractedTestResult = aiClient
-          .extractFromImage[ExtractedTestResult](imageByteStream, "AI_CLIENT_SPEC_SUCCESS")
+          .extractFromImage[ExtractedTestResult](imageByteStream, SupportedMediaType.JPEG, "AI_CLIENT_SPEC_SUCCESS")
           .zioValue
 
         extractedTestResult shouldBe ExtractedTestResult("extracted-value")
@@ -116,10 +117,10 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
           )
           .zioValue
 
-        val imageByteStream = ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5))
+        val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
 
         val serviceError = aiClient
-          .extractFromImage[ExtractedTestResult](imageByteStream, "AI_CLIENT_SPEC_ERROR")
+          .extractFromImage[ExtractedTestResult](imageByteStream, SupportedMediaType.JPEG, "AI_CLIENT_SPEC_ERROR")
           .zioError
 
         serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
@@ -139,14 +140,18 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
             )
             .zioValue
 
-          val imageByteStream = ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5))
+          val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
 
           val serviceError = aiClient
-            .extractFromImage[ExtractedTestResult](imageByteStream, "AI_CLIENT_SPEC_MALFORMED")
+            .extractFromImage[ExtractedTestResult](
+              imageByteStream,
+              SupportedMediaType.JPEG,
+              "AI_CLIENT_SPEC_MALFORMED",
+            )
             .zioError
 
           serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
-          serviceError.message shouldBe "Failed to parse AI response"
+          serviceError.message should startWith("Failed to parse AI response")
       }
     }
   }

@@ -1,9 +1,9 @@
 package io.mesazon.gateway.clients
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
-import io.mesazon.domain.gateway.ServiceError
+import io.mesazon.domain.gateway.{ServiceError, SupportedMediaType}
 import io.mesazon.gateway.config.AIClientConfig
-import org.apache.tika.Tika
+import io.mesazon.gateway.utils.FileByteStreamScanned
 import sttp.ai.openai.OpenAI
 import sttp.ai.openai.requests.completions.chat.ChatRequestBody.{ChatBody, ChatCompletionModel, ResponseFormat}
 import sttp.ai.openai.requests.completions.chat.message.*
@@ -11,13 +11,13 @@ import sttp.client4.Backend
 import sttp.tapir.Schema
 import sttp.tapir.docs.apispec.schema.TapirSchemaToJsonSchema
 import zio.*
-import zio.stream.*
 
 import java.util.Base64
 
 trait AIClient {
   def extractFromImage[A](
-      imageByteStream: ZStream[Any, Throwable, Byte],
+      imageByteStream: FileByteStreamScanned,
+      supportedMediaType: SupportedMediaType,
       instructions: String,
   )(using Schema[A], JsonValueCodec[A]): IO[ServiceError, A]
 }
@@ -28,8 +28,6 @@ object AIClient {
       openAI: OpenAI,
       backend: Backend[Task],
   ) extends AIClient {
-
-    private val tika = new Tika()
 
     private def responseFormat[A](using schema: Schema[A]): ResponseFormat.JsonSchema =
       ResponseFormat.JsonSchema(
@@ -45,20 +43,15 @@ object AIClient {
       )
 
     override def extractFromImage[A](
-        imageByteStream: ZStream[Any, Throwable, Byte],
+        imageByteStream: FileByteStreamScanned,
+        supportedMediaType: SupportedMediaType,
         instructions: String,
     )(using Schema[A], JsonValueCodec[A]): IO[ServiceError, A] =
       for {
-        imageBytes <- imageByteStream.runCollect
+        imageBytes <- imageByteStream.value.runCollect
           .map(_.toArray)
           .mapError(error =>
             ServiceError.InternalServerError.UnexpectedError("Failed to read image for AI extraction", Some(error))
-          )
-        mimeType <- ZIO
-          .attemptBlocking(tika.detect(imageBytes))
-          .mapError(error =>
-            ServiceError.InternalServerError
-              .UnexpectedError("Failed to detect image type for AI extraction", Some(error))
           )
         imageBase64 = Base64.getEncoder.encodeToString(imageBytes)
         response <- openAI
@@ -71,7 +64,7 @@ object AIClient {
                   Content.ArrayContent(
                     Seq(
                       Content.ContentPart.ImageUrl(
-                        Content.ImageUrlDetails(url = s"data:$mimeType;base64,$imageBase64")
+                        Content.ImageUrlDetails(url = s"data:${supportedMediaType.mime};base64,$imageBase64")
                       )
                     )
                   )
@@ -89,7 +82,8 @@ object AIClient {
         result <- ZIO
           .attempt(readFromString[A](response.choices.head.message.content))
           .mapError(error =>
-            ServiceError.InternalServerError.UnexpectedError(s"Failed to parse AI response ${response.choices.mkString("\n")}", Some(error))
+            ServiceError.InternalServerError
+              .UnexpectedError(s"Failed to parse AI response ${response.choices.mkString("\n")}", Some(error))
           )
       } yield result
   }

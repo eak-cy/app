@@ -46,14 +46,14 @@ object FileService {
         organizationLogoImageOriginalFileName: ImageOriginalFileName,
         organizationLogoImageByteStream: ZStream[Any, Throwable, Byte],
     ): ServiceTask[Unit] = ZIO.scoped(for {
-      organizationLogoImageScannedByteStream <- fileScanner.scan(
+      organizationLogoImageScanOutput <- fileScanner.scan(
         organizationLogoImageByteStream,
-        SupportedMediaTypes.images,
+        SupportedMediaType.images,
         fileServiceConfig.maxUploadBytes,
       )
       organizationLogoImageNormalizedResult <- imageProcessing.normalize(
-        organizationLogoImageScannedByteStream,
-        SupportedMediaTypes.images,
+        organizationLogoImageScanOutput.fileByteStreamScanned,
+        SupportedMediaType.images,
       )
       organizationLogoImageUploadedResult <-
         s3ClientOrganizationMedia
@@ -106,14 +106,14 @@ object FileService {
           } else {
             ZIO.unit
           }
-        catalogueItemImageScannedByteStream <- fileScanner.scan(
+        catalogueItemImageScanOutput <- fileScanner.scan(
           catalogueItemImageByteStream,
-          SupportedMediaTypes.images,
+          SupportedMediaType.images,
           fileServiceConfig.maxUploadBytes,
         )
         catalogueItemImageNormalizedResult <- imageProcessing.normalize(
-          catalogueItemImageScannedByteStream,
-          SupportedMediaTypes.images,
+          catalogueItemImageScanOutput.fileByteStreamScanned,
+          SupportedMediaType.images,
         )
         catalogueItemImageUploadedResult <-
           s3ClientOrganizationMedia
