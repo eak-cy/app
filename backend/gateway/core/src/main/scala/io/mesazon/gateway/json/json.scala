@@ -11,6 +11,38 @@ given Schema[AssistantResponse] = Schema.derived[AssistantResponse]
 
 given JsonValueCodec[AssistantResponse] = JsonCodecMaker.make[AssistantResponse]
 
+given Schema[PhoneNumber] = Schema.derived[PhoneNumber]
+
+given Schema[CustomerEmailEntryRequest] = Schema.derived[CustomerEmailEntryRequest]
+
+given Schema[CustomerPhoneNumberEntryRequest] = Schema.derived[CustomerPhoneNumberEntryRequest]
+
+given Schema[InsertCustomerBusinessContact] = Schema.derived[InsertCustomerBusinessContact]
+
+given Schema[InsertCustomerIndividualPostRequest] = Schema.derived[InsertCustomerIndividualPostRequest]
+
+given Schema[InsertCustomerBusinessPostRequest] = Schema.derived[InsertCustomerBusinessPostRequest]
+
+given Schema[ExtractCustomerEmailEntry] = Schema.derived[ExtractCustomerEmailEntry]
+
+given Schema[ExtractCustomerPhoneNumber] = Schema.derived[ExtractCustomerPhoneNumber]
+
+given Schema[ExtractCustomerPhoneNumberEntry] = Schema.derived[ExtractCustomerPhoneNumberEntry]
+
+given Schema[ExtractCustomerIndividual] = Schema.derived[ExtractCustomerIndividual]
+
+given Schema[ExtractCustomerBusinessContact] = Schema.derived[ExtractCustomerBusinessContact]
+
+given Schema[ExtractCustomerBusiness] = Schema.derived[ExtractCustomerBusiness]
+
+given Schema[ExtractCustomerIndividualData] = Schema.derived[ExtractCustomerIndividualData]
+
+given Schema[ExtractCustomerBusinessData] = Schema.derived[ExtractCustomerBusinessData]
+
+given Schema[ExtractCustomersResponse] = Schema.derived[ExtractCustomersResponse]
+
+given JsonValueCodec[ExtractCustomersResponse] = JsonCodecMaker.make[ExtractCustomersResponse]
+
 private final case class TapirServerErrorBody(code: String, message: String)
 
 private given JsonValueCodec[TapirServerErrorBody] = JsonCodecMaker.make[TapirServerErrorBody]
