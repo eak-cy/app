@@ -749,23 +749,80 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
           fileBytesSize = FileBytesSize.assume(1L),
         )
 
-        val customerIndividualCandidate = CustomerIndividualCandidate(
-          candidate = arbitrarySample[InsertCustomerIndividualPostRequest],
+        val extractCustomerPhoneNumberIndividual = ExtractCustomerPhoneNumber(
+          phoneNationalNumber = arbitrarySample[PhoneNationalNumber],
+          phoneCountryCode = arbitrarySample[PhoneCountryCode],
+        )
+        val extractCustomerIndividual = ExtractCustomerIndividual(
+          fullName = arbitrarySample[CustomerFullName],
+          emails = List(
+            ExtractCustomerEmailEntry(
+              email = arbitrarySample[CustomerEmail],
+              isDefault = true,
+            )
+          ),
+          phoneNumbers = List(
+            ExtractCustomerPhoneNumberEntry(
+              phoneNumber = extractCustomerPhoneNumberIndividual,
+              isDefault = true,
+            )
+          ),
+          addressLine1 = None,
+          addressLine2 = None,
+          city = None,
+          postalCode = None,
+          country = None,
+        )
+        val extractCustomerIndividualData = ExtractCustomerIndividualData(
+          candidate = extractCustomerIndividual,
           isDuplicate = false,
           extractionNotes = None,
         )
 
-        val customerBusinessCandidate = CustomerBusinessCandidate(
-          candidate = arbitrarySample[InsertCustomerBusinessPostRequest],
+        val extractCustomerPhoneNumberBusiness = ExtractCustomerPhoneNumber(
+          phoneNationalNumber = arbitrarySample[PhoneNationalNumber],
+          phoneCountryCode = arbitrarySample[PhoneCountryCode],
+        )
+        val extractCustomerBusiness = ExtractCustomerBusiness(
+          businessName = arbitrarySample[CustomerBusinessName],
+          emails = List(
+            ExtractCustomerEmailEntry(
+              email = arbitrarySample[CustomerEmail],
+              isDefault = true,
+            )
+          ),
+          taxID = None,
+          phoneNumbers = List(
+            ExtractCustomerPhoneNumberEntry(
+              phoneNumber = extractCustomerPhoneNumberBusiness,
+              isDefault = true,
+            )
+          ),
+          addressLine1 = None,
+          addressLine2 = None,
+          city = None,
+          postalCode = None,
+          country = None,
+          customerBusinessContacts = List(
+            ExtractCustomerBusinessContact(
+              fullName = arbitrarySample[CustomerFullName],
+              role = Some(arbitrarySample[CustomerBusinessContactRole]),
+              email = Some(arbitrarySample[CustomerEmail]),
+              phoneNumber = Some(extractCustomerPhoneNumberBusiness),
+            )
+          ),
+        )
+        val extractCustomerBusinessData = ExtractCustomerBusinessData(
+          candidate = extractCustomerBusiness,
           isDuplicate = false,
           extractionNotes = None,
         )
 
-        val extractCustomersFromPhotoResponse = ExtractCustomersFromPhotoResponse(
+        val extractCustomersResponse = ExtractCustomersResponse(
           entriesIdentified = 2L,
           entriesProcessed = 2L,
-          customerIndividualCandidates = List(customerIndividualCandidate),
-          customerBusinessCandidates = List(customerBusinessCandidate),
+          customerIndividualCandidates = List(extractCustomerIndividualData),
+          customerBusinessCandidates = List(extractCustomerBusinessData),
           unidentifiedEntriesSummary = None,
         )
 
@@ -776,7 +833,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
 
         val extractFromImageCallsRef =
           Ref.make(List.empty[(FileByteStreamScanned, SupportedMediaType, String)]).zioValue
-        val aiClient = new Mocks.AIClientMock(ZIO.succeed(extractCustomersFromPhotoResponse), extractFromImageCallsRef)
+        val aiClient = new Mocks.AIClientMock(ZIO.succeed(extractCustomersResponse), extractFromImageCallsRef)
 
         val fileService = buildFileService(aiClient)
 
@@ -784,7 +841,7 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
           .extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
           .zioValue
 
-        response shouldBe extractCustomersFromPhotoResponse
+        response shouldBe extractCustomersResponse
 
         extractFromImageCallsRef.refValue shouldBe List(
           (
@@ -793,6 +850,20 @@ class FileServiceSpec extends ZWordSpecBase, SmithyArbitraries, RepositoryArbitr
             FileService.extractCustomersFromPhotoInstructions,
           )
         )
+
+        val extractCustomersFromPhotoInstructionsNormalized =
+          extractFromImageCallsRef.refValue.head._3.replaceAll("\\s+", " ")
+
+        List(
+          "best-effort attempt to provide a valid phone pair",
+          "phoneNationalNumber must contain only the national number, without the country code",
+          "{\"phoneNationalNumber\":\"99123456\",\"phoneCountryCode\":\"+357\"}",
+          "{\"phoneNationalNumber\":\"4155550123\",\"phoneCountryCode\":\"+1\"}",
+          "Email and phone lists may be empty",
+          "Whenever either list is non-empty, mark exactly one entry in that list with isDefault=true",
+          "If you cannot make out any name for an entry, do not return it as a candidate",
+          "only include a business contact if you can make out that contact's name",
+        ).foreach(instruction => extractCustomersFromPhotoInstructionsNormalized.contains(instruction) shouldBe true)
       }
 
       "propagate the error when the photo fails FileScanner's scan (unsupported type or too large)" in new TestContext {

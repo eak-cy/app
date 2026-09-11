@@ -6,6 +6,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 import io.mesazon.domain.gateway.*
 import io.mesazon.gateway.clients.AIClient
 import io.mesazon.gateway.config.AIClientConfig
+import io.mesazon.gateway.json.given
 import io.mesazon.gateway.utils.FileByteStreamScanned
 import io.mesazon.testkit.base.*
 import io.mesazon.wiremock.WiremockClient
@@ -105,6 +106,130 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
         requestMappings(0).count shouldBe 1
       }
 
+      "successfully decode a candidate marked as a duplicate with populated extraction notes" in withContext {
+        context =>
+          import context.*
+
+          val aiClient = ZIO
+            .service[AIClient]
+            .provide(
+              AIClient.live,
+              ZLayer.succeed(aiClientConfig),
+              HttpClientZioBackend.layer(),
+            )
+            .zioValue
+
+          val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
+
+          val extractCustomersResponse = aiClient
+            .extractFromImage[ExtractCustomersResponse](
+              imageByteStream,
+              SupportedMediaType.JPEG,
+              "AI_CLIENT_SPEC_DUPLICATE_NOTES",
+            )
+            .zioValue
+
+          val extractCustomerIndividualDataExpected = ExtractCustomerIndividualData(
+            candidate = ExtractCustomerIndividual(
+              fullName = CustomerFullName.assume("John Smith"),
+              emails = List.empty,
+              phoneNumbers = List.empty,
+              addressLine1 = None,
+              addressLine2 = None,
+              city = None,
+              postalCode = None,
+              country = None,
+            ),
+            isDuplicate = true,
+            extractionNotes = Some("Phone number partially illegible"),
+          )
+
+          extractCustomersResponse shouldBe ExtractCustomersResponse(
+            entriesIdentified = 1L,
+            entriesProcessed = 1L,
+            customerIndividualCandidates = List(extractCustomerIndividualDataExpected),
+            customerBusinessCandidates = List.empty,
+            unidentifiedEntriesSummary = None,
+          )
+      }
+
+      "successfully decode a response with a populated unidentified-entries summary" in withContext { context =>
+        import context.*
+
+        val aiClient = ZIO
+          .service[AIClient]
+          .provide(
+            AIClient.live,
+            ZLayer.succeed(aiClientConfig),
+            HttpClientZioBackend.layer(),
+          )
+          .zioValue
+
+        val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
+
+        val extractCustomersResponse = aiClient
+          .extractFromImage[ExtractCustomersResponse](
+            imageByteStream,
+            SupportedMediaType.JPEG,
+            "AI_CLIENT_SPEC_UNIDENTIFIED_SUMMARY",
+          )
+          .zioValue
+
+        val extractCustomerIndividualDataExpected = ExtractCustomerIndividualData(
+          candidate = ExtractCustomerIndividual(
+            fullName = CustomerFullName.assume("Alice Wong"),
+            emails = List.empty,
+            phoneNumbers = List.empty,
+            addressLine1 = None,
+            addressLine2 = None,
+            city = None,
+            postalCode = None,
+            country = None,
+          ),
+          isDuplicate = false,
+          extractionNotes = None,
+        )
+
+        extractCustomersResponse shouldBe ExtractCustomersResponse(
+          entriesIdentified = 4L,
+          entriesProcessed = 1L,
+          customerIndividualCandidates = List(extractCustomerIndividualDataExpected),
+          customerBusinessCandidates = List.empty,
+          unidentifiedEntriesSummary = Some("Could not read the last 3 entries"),
+        )
+      }
+
+      "successfully decode an empty result when nothing is recognizable in the photo" in withContext { context =>
+        import context.*
+
+        val aiClient = ZIO
+          .service[AIClient]
+          .provide(
+            AIClient.live,
+            ZLayer.succeed(aiClientConfig),
+            HttpClientZioBackend.layer(),
+          )
+          .zioValue
+
+        val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
+
+        val extractCustomersResponse = aiClient
+          .extractFromImage[ExtractCustomersResponse](
+            imageByteStream,
+            SupportedMediaType.JPEG,
+            "AI_CLIENT_SPEC_EMPTY_RESULT",
+          )
+          .zioValue
+
+        extractCustomersResponse shouldBe ExtractCustomersResponse(
+          entriesIdentified = 0L,
+          entriesProcessed = 0L,
+          customerIndividualCandidates = List.empty,
+          customerBusinessCandidates = List.empty,
+          unidentifiedEntriesSummary = None,
+        )
+      }
+
       "fail with an UnexpectedError when the AI service returns an error" in withContext { context =>
         import context.*
 
@@ -147,6 +272,33 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
               imageByteStream,
               SupportedMediaType.JPEG,
               "AI_CLIENT_SPEC_MALFORMED",
+            )
+            .zioError
+
+          serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
+          serviceError.message should startWith("Failed to parse AI response")
+      }
+
+      "fail with an UnexpectedError when the AI response violates a refined field constraint" in withContext {
+        context =>
+          import context.*
+
+          val aiClient = ZIO
+            .service[AIClient]
+            .provide(
+              AIClient.live,
+              ZLayer.succeed(aiClientConfig),
+              HttpClientZioBackend.layer(),
+            )
+            .zioValue
+
+          val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
+
+          val serviceError = aiClient
+            .extractFromImage[ExtractCustomersResponse](
+              imageByteStream,
+              SupportedMediaType.JPEG,
+              "AI_CLIENT_SPEC_INVALID_REFINED",
             )
             .zioError
 

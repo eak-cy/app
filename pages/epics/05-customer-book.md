@@ -546,7 +546,7 @@ This step exists to help a business move its existing customer book into this pr
 | **Scenarios** | **Requirements** |
 | --- | --- |
 | 1. User photographs a page with several clear entries | - Each is returned as a candidate person or a candidate business, whichever the AI judges it to be - Nothing forces a business card or a grid row into one kind or the other |
-| 2. An entry has a name but something else about it is unclear or missing (a smudged phone number, no visible email) | - Still returned as a candidate, with a short, plain note on that candidate saying what was missing or unclear |
+| 2. An entry has a name but something else about it is unclear or missing (a smudged phone number, no visible email) | - Still returned as a candidate, with a short, plain note on that candidate saying what was missing or unclear - Any detail that is returned still follows the same field rules as adding a customer |
 | 3. An entry has no name the AI could make out at all | - Not returned as a candidate - Reflected only in the counts and in a short summary message describing what could not be read and where in the photo to look |
 | 4. Two entries in the same photo are the same kind and share a name, ignoring capitalisation | - Both are returned, and each is marked as a possible duplicate of the other |
 | 5. Two entries share a name but are different kinds — one looks like a person, the other a business | - Neither is marked as a duplicate. Only matching kinds count |
@@ -560,7 +560,7 @@ This step exists to help a business move its existing customer book into this pr
 #### Requirements
 
 1. Every candidate is shaped exactly like adding a person or a business in [step 1](#1-user-adds-a-customer) — the same fields, the same two kinds. The AI decides which kind each entry looks like; nothing here fixes a rule for what a business card or a grid row must become.
-2. A candidate's name — and a business contact's name, when a candidate business includes one — must not be empty. That is the only rule checked here. Nothing else on a candidate is checked the way it is when actually adding a customer: an email does not have to look like a real address, a phone number does not have to be real, and a list of them does not have to carry exactly one default. The person reviews and corrects a candidate before it is actually added.
+2. A candidate's name — and a business contact's name, when a candidate business includes one — must not be empty. Every other value that is returned must satisfy its own field rule: names and other text are trimmed and non-empty when present, email values follow the email field's format and length rule, and each phone component follows its own format and length rule. The phone shown in a candidate has exactly two parts — its national number and its country dialling code — and does not expose a regional label or an international-format number. The photo reader is asked for a best-effort real-looking pair, for example national number `5551234567` with country code `+1`, but this step does not prove that the pair is a real number for that country; that check happens when the candidate is actually added. An empty email or phone list is allowed. The instructions given to the photo reader require exactly one entry to be marked as the default whenever either list is non-empty. If the AI returns a value that fails one of the field-level rules, the response cannot be used and the photo read reports a server error rather than returning a partly invalid candidate; the default-count rule is not independently checked at this stage.
 3. An entry the photo seemed to contain but that could not be given any name at all is never returned as a candidate.
 4. The response always states how many entries were identified in total and how many were actually turned into candidates, so the person can tell at a glance that, for example, 3 entries could not be processed. When some were missed, a short summary message says what could not be read and where in the photo to look, without listing each one separately.
 5. Two candidates of the same kind found in the same photo, whose names match once capitalisation is ignored, are each marked as a possible duplicate of the other. This only ever compares candidates found within that one photo — it never looks at customers already stored in the book.
@@ -579,28 +579,28 @@ The body is the photo itself. The organization it is for travels in the request'
 | Organization ID | `UUID` | Canonical 36-character form | ✅ | Which organization's book this photo is for |
 | Image | Binary | PNG, JPEG or WEBP; up to 20 MB | ✅ | The photo to read, sent as the request body |
 
-**Response**
+**Response — `ExtractCustomersResponse`**
 
 | **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
 | --- | --- | --- | --- | --- |
 | Entries Identified | `Long` | Whole number, zero or more | ✅ | How many entries the photo seemed to contain in total, including ones that could not be turned into a candidate |
-| Entries Processed | `Long` | Whole number, zero or more; never greater than Entries Identified | ✅ | How many of those were actually turned into a candidate person or business |
-| Customer Individual Candidates | `CustomerIndividualCandidate[]` | May be empty | ✅ | Recognized people, in whatever order the photo listed them |
-| Customer Business Candidates | `CustomerBusinessCandidate[]` | May be empty | ✅ | Recognized businesses, in whatever order the photo listed them |
+| Entries Processed | `Long` | Whole number, zero or more | ✅ | How many of those were actually turned into a candidate person or business. This, like everything else in the response, is the AI's own reported figure and is not independently checked |
+| Customer Individual Candidates | `ExtractCustomerIndividualData[]` | May be empty | ✅ | Recognized people, in whatever order the photo listed them |
+| Customer Business Candidates | `ExtractCustomerBusinessData[]` | May be empty | ✅ | Recognized businesses, in whatever order the photo listed them |
 | Unidentified Entries Summary | `String` | Concise, plain text | ❌ | Present only when Entries Processed is less than Entries Identified. A short message pointing at what could not be turned into a candidate — for example, "could not read the last 3 entries" or "could not process entries 2, 5 and 6" |
 
-**CustomerIndividualCandidate**
+**ExtractCustomerIndividualData**
 
-Same fields as **CustomerIndividual** ([step 1](#1-user-adds-a-customer)) — Full Name, Emails, Phone Numbers, and address — except none of them are checked the way they are when actually adding a customer; only Full Name must be non-empty. Plus:
+The response keeps a `candidate` part alongside the extraction metadata. That `candidate` part has the same fields as **CustomerIndividual** ([step 1](#1-user-adds-a-customer)) — Full Name, Emails, Phone Numbers, and address — and every returned field follows the same constraint as an added customer. Phone numbers contain only a national number and a country dialling code. The candidate wrapper also carries:
 
 | **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
 | --- | --- | --- | --- | --- |
 | Is Duplicate | `Boolean` | — | ✅ | True when another candidate of the same kind in this same response has a matching name, ignoring capitalisation |
 | Extraction Notes | `String` | Concise, plain text | ❌ | Present only when something about this candidate was missing or unclear, in one short line |
 
-**CustomerBusinessCandidate**
+**ExtractCustomerBusinessData**
 
-Same fields as **CustomerBusiness** ([step 1](#1-user-adds-a-customer)) — Business Name, Emails, Phone Numbers, Tax ID, address, and Customer Business Contacts — except none of them are checked the way they are when actually adding a customer; only Business Name, and the Full Name of any contact included, must be non-empty. Plus:
+The response keeps a `candidate` part alongside the extraction metadata. That `candidate` part has the same fields as **CustomerBusiness** ([step 1](#1-user-adds-a-customer)) — Business Name, Emails, Phone Numbers, Tax ID, address, and Customer Business Contacts — and every returned field follows the same constraint as an added customer. Phone numbers contain only a national number and a country dialling code. The candidate wrapper also carries:
 
 | **Field Name** | **Type** | **Constraint** | **Required** | **Description** |
 | --- | --- | --- | --- | --- |

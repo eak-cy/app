@@ -917,7 +917,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
 
         val customerBookPhotoBytes = ZStream.fromResource("assets/test-logo-1.jpeg").runCollect.zioValue
 
-        val extractCustomersFromPhotoResponse = gatewayClient
+        val extractCustomersResponse = gatewayClient
           .extractCustomersFromPhotoPost[smithy.InternalServerError](
             Some(organizationUserRow.organizationID),
             customerBookPhotoBytes,
@@ -925,23 +925,19 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           )
           .zioValue
 
-        extractCustomersFromPhotoResponse.code shouldBe StatusCode.Ok
+        extractCustomersResponse.code shouldBe StatusCode.Ok
 
-        val customerIndividualCandidateExpected = CustomerIndividualCandidate(
-          candidate = InsertCustomerIndividualPostRequest(
+        val extractCustomerIndividualDataExpected = ExtractCustomerIndividualData(
+          candidate = ExtractCustomerIndividual(
             fullName = CustomerFullName.assume("Jane Doe"),
             emails = List(
-              CustomerEmailEntryRequest(email = CustomerEmail.assume("jane.doe@example.com"), isDefault = true)
+              ExtractCustomerEmailEntry(email = CustomerEmail.assume("jane.doe@example.com"), isDefault = true)
             ),
             phoneNumbers = List(
-              CustomerPhoneNumberEntryRequest(
-                phoneNumber = CustomerPhoneNumber.assume(
-                  PhoneNumber(
-                    phoneRegion = PhoneRegion.assume("US"),
-                    phoneCountryCode = PhoneCountryCode.assume("+1"),
-                    phoneNationalNumber = PhoneNationalNumber.assume("5551234567"),
-                    phoneNumberE164 = PhoneNumberE164.assume("+15551234567"),
-                  )
+              ExtractCustomerPhoneNumberEntry(
+                phoneNumber = ExtractCustomerPhoneNumber(
+                  phoneNationalNumber = PhoneNationalNumber.assume("5551234567"),
+                  phoneCountryCode = PhoneCountryCode.assume("+1"),
                 ),
                 isDefault = true,
               )
@@ -956,11 +952,11 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           extractionNotes = None,
         )
 
-        extractCustomersFromPhotoResponse.body shouldBe Right(
-          ExtractCustomersFromPhotoResponse(
+        extractCustomersResponse.body shouldBe Right(
+          ExtractCustomersResponse(
             entriesIdentified = 1L,
             entriesProcessed = 1L,
-            customerIndividualCandidates = List(customerIndividualCandidateExpected),
+            customerIndividualCandidates = List(extractCustomerIndividualDataExpected),
             customerBusinessCandidates = List.empty,
             unidentifiedEntriesSummary = None,
           )
@@ -981,7 +977,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
 
         val customerBookPhotoBytes = ZStream.fromResource("assets/test-logo-1.jpeg").runCollect.zioValue
 
-        val extractCustomersFromPhotoResponse = gatewayClient
+        val extractCustomersResponse = gatewayClient
           .extractCustomersFromPhotoPost[smithy.BadRequest](
             None,
             customerBookPhotoBytes,
@@ -989,8 +985,8 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           )
           .zioValue
 
-        extractCustomersFromPhotoResponse.code shouldBe StatusCode.BadRequest
-        extractCustomersFromPhotoResponse.body.left.value shouldBe smithy.BadRequest()
+        extractCustomersResponse.code shouldBe StatusCode.BadRequest
+        extractCustomersResponse.body.left.value shouldBe smithy.BadRequest()
       }
 
       "fail with Unauthorized when access token is missing" in withContext { context =>
@@ -999,7 +995,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
         val organizationID         = arbitrarySample[OrganizationID]
         val customerBookPhotoBytes = ZStream.fromResource("assets/test-logo-1.jpeg").runCollect.zioValue
 
-        val extractCustomersFromPhotoResponse = gatewayClient
+        val extractCustomersResponse = gatewayClient
           .extractCustomersFromPhotoPost[smithy.Unauthorized](
             Some(organizationID),
             customerBookPhotoBytes,
@@ -1007,8 +1003,8 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           )
           .zioValue
 
-        extractCustomersFromPhotoResponse.code shouldBe StatusCode.Unauthorized
-        extractCustomersFromPhotoResponse.body.left.value shouldBe smithy.Unauthorized()
+        extractCustomersResponse.code shouldBe StatusCode.Unauthorized
+        extractCustomersResponse.body.left.value shouldBe smithy.Unauthorized()
       }
 
       "fail with Unauthorized when access token is invalid" in withContext { context =>
@@ -1017,7 +1013,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
         val organizationID         = arbitrarySample[OrganizationID]
         val customerBookPhotoBytes = ZStream.fromResource("assets/test-logo-1.jpeg").runCollect.zioValue
 
-        val extractCustomersFromPhotoResponse = gatewayClient
+        val extractCustomersResponse = gatewayClient
           .extractCustomersFromPhotoPost[smithy.Unauthorized](
             Some(organizationID),
             customerBookPhotoBytes,
@@ -1025,8 +1021,8 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           )
           .zioValue
 
-        extractCustomersFromPhotoResponse.code shouldBe StatusCode.Unauthorized
-        extractCustomersFromPhotoResponse.body.left.value shouldBe smithy.Unauthorized()
+        extractCustomersResponse.code shouldBe StatusCode.Unauthorized
+        extractCustomersResponse.body.left.value shouldBe smithy.Unauthorized()
       }
 
       "fail with Forbidden when the user is assigned to the organization with a disallowed role" in withContext {
@@ -1056,7 +1052,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
 
           val customerBookPhotoBytes = ZStream.fromResource("assets/test-logo-1.jpeg").runCollect.zioValue
 
-          val extractCustomersFromPhotoResponse = gatewayClient
+          val extractCustomersResponse = gatewayClient
             .extractCustomersFromPhotoPost[smithy.Forbidden](
               Some(organizationUserRow.organizationID),
               customerBookPhotoBytes,
@@ -1064,8 +1060,8 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
             )
             .zioValue
 
-          extractCustomersFromPhotoResponse.code shouldBe StatusCode.Forbidden
-          extractCustomersFromPhotoResponse.body.left.value shouldBe smithy.Forbidden()
+          extractCustomersResponse.code shouldBe StatusCode.Forbidden
+          extractCustomersResponse.body.left.value shouldBe smithy.Forbidden()
       }
 
       "fail with Forbidden when user is not in an allowed onboard stage" in withContext { context =>
@@ -1082,7 +1078,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
         val organizationID         = arbitrarySample[OrganizationID]
         val customerBookPhotoBytes = ZStream.fromResource("assets/test-logo-1.jpeg").runCollect.zioValue
 
-        val extractCustomersFromPhotoResponse = gatewayClient
+        val extractCustomersResponse = gatewayClient
           .extractCustomersFromPhotoPost[smithy.Forbidden](
             Some(organizationID),
             customerBookPhotoBytes,
@@ -1090,8 +1086,8 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           )
           .zioValue
 
-        extractCustomersFromPhotoResponse.code shouldBe StatusCode.Forbidden
-        extractCustomersFromPhotoResponse.body.left.value shouldBe smithy.Forbidden()
+        extractCustomersResponse.code shouldBe StatusCode.Forbidden
+        extractCustomersResponse.body.left.value shouldBe smithy.Forbidden()
       }
 
       "fail with InternalServerError when the user is not assigned to the organization" in withContext { context =>
@@ -1107,7 +1103,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
         val organizationID         = arbitrarySample[OrganizationID]
         val customerBookPhotoBytes = ZStream.fromResource("assets/test-logo-1.jpeg").runCollect.zioValue
 
-        val extractCustomersFromPhotoResponse = gatewayClient
+        val extractCustomersResponse = gatewayClient
           .extractCustomersFromPhotoPost[smithy.InternalServerError](
             Some(organizationID),
             customerBookPhotoBytes,
@@ -1115,8 +1111,8 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           )
           .zioValue
 
-        extractCustomersFromPhotoResponse.code shouldBe StatusCode.InternalServerError
-        extractCustomersFromPhotoResponse.body.left.value shouldBe smithy.InternalServerError()
+        extractCustomersResponse.code shouldBe StatusCode.InternalServerError
+        extractCustomersResponse.body.left.value shouldBe smithy.InternalServerError()
       }
 
       "fail with InternalServerError when the uploaded file is not a supported image" in withContext { context =>
@@ -1139,7 +1135,7 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
 
         val customerBookPhotoBytes = ZStream.fromResource("assets/malformed.png").runCollect.zioValue
 
-        val extractCustomersFromPhotoResponse = gatewayClient
+        val extractCustomersResponse = gatewayClient
           .extractCustomersFromPhotoPost[smithy.InternalServerError](
             Some(organizationUserRow.organizationID),
             customerBookPhotoBytes,
@@ -1147,8 +1143,8 @@ class FileApiSpec extends GatewayAcceptanceTest, SmithyArbitraries, RepositoryAr
           )
           .zioValue
 
-        extractCustomersFromPhotoResponse.code shouldBe StatusCode.InternalServerError
-        extractCustomersFromPhotoResponse.body.left.value shouldBe smithy.InternalServerError()
+        extractCustomersResponse.code shouldBe StatusCode.InternalServerError
+        extractCustomersResponse.body.left.value shouldBe smithy.InternalServerError()
 
         postgresClient.executeQuery(customerBookQueries.getAllCustomerIDsTesting).zioValue should have size 0
       }

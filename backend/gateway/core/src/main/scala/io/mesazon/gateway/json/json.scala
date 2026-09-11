@@ -23,13 +23,25 @@ given Schema[InsertCustomerIndividualPostRequest] = Schema.derived[InsertCustome
 
 given Schema[InsertCustomerBusinessPostRequest] = Schema.derived[InsertCustomerBusinessPostRequest]
 
-given Schema[CustomerIndividualCandidate] = Schema.derived[CustomerIndividualCandidate]
+given Schema[ExtractCustomerEmailEntry] = Schema.derived[ExtractCustomerEmailEntry]
 
-given Schema[CustomerBusinessCandidate] = Schema.derived[CustomerBusinessCandidate]
+given Schema[ExtractCustomerPhoneNumber] = Schema.derived[ExtractCustomerPhoneNumber]
 
-given Schema[ExtractCustomersFromPhotoResponse] = Schema.derived[ExtractCustomersFromPhotoResponse]
+given Schema[ExtractCustomerPhoneNumberEntry] = Schema.derived[ExtractCustomerPhoneNumberEntry]
 
-given JsonValueCodec[ExtractCustomersFromPhotoResponse] = JsonCodecMaker.make[ExtractCustomersFromPhotoResponse]
+given Schema[ExtractCustomerIndividual] = Schema.derived[ExtractCustomerIndividual]
+
+given Schema[ExtractCustomerBusinessContact] = Schema.derived[ExtractCustomerBusinessContact]
+
+given Schema[ExtractCustomerBusiness] = Schema.derived[ExtractCustomerBusiness]
+
+given Schema[ExtractCustomerIndividualData] = Schema.derived[ExtractCustomerIndividualData]
+
+given Schema[ExtractCustomerBusinessData] = Schema.derived[ExtractCustomerBusinessData]
+
+given Schema[ExtractCustomersResponse] = Schema.derived[ExtractCustomersResponse]
+
+given JsonValueCodec[ExtractCustomersResponse] = JsonCodecMaker.make[ExtractCustomersResponse]
 
 private final case class TapirServerErrorBody(code: String, message: String)
 

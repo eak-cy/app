@@ -30,3 +30,7 @@ sbt "gateway-core/testOnly *<Client>ClientSpec"
 ```
 
 If endpoint-visible behavior changes, also update the service functional and acceptance tests plus feature doc.
+
+## Mockability of the client's own trait
+
+Before assuming the service functional spec can `mock[Client]` this trait, check whether any of its methods pairs a type parameter with a typeclass `using` bound (e.g. `def m[A](...)(using Schema[A], JsonValueCodec[A]): F[A]`, as `AIClient`/`OpenAIClient` do). ScalaMock's `mock[T]` macro cannot correctly mock that shape — see [Functional testing](functional-testing.md)'s "Known limitation" section for the confirmed root cause and the hand-written-double resolution. Check for this before writing the client, not after the functional spec fails to compile.

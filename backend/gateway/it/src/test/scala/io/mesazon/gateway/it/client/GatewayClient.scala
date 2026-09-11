@@ -416,7 +416,7 @@ case class GatewayClient(config: GatewayClientConfig, sttpBackend: Backend[Task]
       organizationIDOpt: Option[OrganizationID],
       customerBookPhotoBytes: Chunk[Byte],
       accessTokenOpt: Option[AccessToken],
-  ): Task[Response[Either[E, ExtractCustomersFromPhotoResponse]]] =
+  ): Task[Response[Either[E, ExtractCustomersResponse]]] =
     basicRequest
       .post(externalUri.addPath("extract", "customer-book-photo"))
       .pipe(request =>
@@ -431,7 +431,7 @@ case class GatewayClient(config: GatewayClientConfig, sttpBackend: Backend[Task]
       )
       .body(customerBookPhotoBytes.toArray)
       .contentType(MediaType.ApplicationOctetStream)
-      .response(asJsonEitherOrFail[E, ExtractCustomersFromPhotoResponse])
+      .response(asJsonEitherOrFail[E, ExtractCustomersResponse])
       .send(sttpBackend)
 
   def insertCustomerIndividualPost[E: JsonValueCodec](

@@ -7,6 +7,7 @@ import io.mesazon.gateway.utils.FileByteStreamScanned
 import sttp.ai.openai.OpenAI
 import sttp.ai.openai.requests.completions.chat.ChatRequestBody.{ChatBody, ChatCompletionModel, ResponseFormat}
 import sttp.ai.openai.requests.completions.chat.message.*
+import sttp.apispec.{AnySchema, Schema as ApiSchema, SchemaLike, SchemaType}
 import sttp.client4.Backend
 import sttp.tapir.Schema
 import sttp.tapir.docs.apispec.schema.TapirSchemaToJsonSchema
@@ -24,6 +25,48 @@ trait AIClient {
 
 object AIClient {
 
+  private[clients] def responseSchema[A](using schema: Schema[A]): ApiSchema =
+    normalizeSchema(
+      TapirSchemaToJsonSchema(
+        schema,
+        markOptionsAsNullable = true,
+      )
+    )
+
+  private def normalizeSchemaLike(schemaLike: SchemaLike): SchemaLike = schemaLike match {
+    case schema: ApiSchema    => normalizeSchema(schema)
+    case anySchema: AnySchema => anySchema
+  }
+
+  private def normalizeSchema(schema: ApiSchema): ApiSchema = {
+    val isObject = schema.`type`.exists(_.contains(SchemaType.Object))
+
+    schema.copy(
+      $schema = None,
+      $defs = schema.$defs.map(_.map((name, nested) => name -> normalizeSchemaLike(nested))),
+      default = None,
+      allOf = schema.allOf.map(normalizeSchemaLike),
+      anyOf = schema.anyOf.map(normalizeSchemaLike),
+      oneOf = schema.oneOf.map(normalizeSchemaLike),
+      not = schema.not.map(normalizeSchemaLike),
+      `if` = schema.`if`.map(normalizeSchemaLike),
+      `then` = schema.`then`.map(normalizeSchemaLike),
+      `else` = schema.`else`.map(normalizeSchemaLike),
+      dependentSchemas = schema.dependentSchemas.map((name, nested) => name -> normalizeSchemaLike(nested)),
+      prefixItems = schema.prefixItems.map(_.map(normalizeSchemaLike)),
+      items = schema.items.map(normalizeSchemaLike),
+      contains = schema.contains.map(normalizeSchemaLike),
+      unevaluatedItems = schema.unevaluatedItems.map(normalizeSchemaLike),
+      required = if (isObject) schema.properties.keys.toList else schema.required,
+      properties = schema.properties.map((name, nested) => name -> normalizeSchemaLike(nested)),
+      patternProperties = schema.patternProperties.map((pattern, nested) => pattern -> normalizeSchemaLike(nested)),
+      additionalProperties =
+        if (isObject) Some(AnySchema.Nothing) else schema.additionalProperties.map(normalizeSchemaLike),
+      propertyNames = schema.propertyNames.map(normalizeSchemaLike),
+      unevaluatedProperties = schema.unevaluatedProperties.map(normalizeSchemaLike),
+    )
+  }
+
   private final class AIClientImpl(
       openAI: OpenAI,
       backend: Backend[Task],
@@ -33,12 +76,7 @@ object AIClient {
       ResponseFormat.JsonSchema(
         name = "ai_client_response",
         strict = Some(true),
-        schema = Some(
-          TapirSchemaToJsonSchema(
-            schema,
-            markOptionsAsNullable = true,
-          )
-        ),
+        schema = Some(responseSchema[A]),
         description = None,
       )
 

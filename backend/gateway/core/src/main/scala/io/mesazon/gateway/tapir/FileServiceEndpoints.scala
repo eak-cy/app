@@ -65,7 +65,7 @@ object FileServiceEndpoints {
     securedEndpoint.post
       .in("extract" / "customer-book-photo")
       .in(streamBinaryBody(ZioStreams)(CodecFormat.OctetStream()))
-      .out(jsonBody[ExtractCustomersFromPhotoResponse])
+      .out(jsonBody[ExtractCustomersResponse])
       .errorOut(
         tapirServerErrorOut(
           NonEmptyChunk(

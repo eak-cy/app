@@ -28,7 +28,7 @@ trait FileService[F[_]] {
   def extractCustomersFromPhoto(
       organizationID: OrganizationID,
       customerBookPhotoByteStream: ZStream[Any, Throwable, Byte],
-  ): F[ExtractCustomersFromPhotoResponse]
+  ): F[ExtractCustomersResponse]
 }
 
 object FileService {
@@ -43,7 +43,14 @@ object FileService {
       |For a candidate business, only include a business contact if you can make out that contact's name.
       |For every field other than a name, try to produce a realistic, usable value (a real-looking email, a phone
       |number with enough information to be dialed, trimmed non-empty text) but this is best-effort, not required
-      |to be perfectly accurate. Never send an empty string for an optional field - omit the field entirely instead.
+      |to be perfectly accurate. For each phone, make a best-effort attempt to provide a valid phone pair for its
+      |country. phoneNationalNumber must contain only the national number, without the country code, and
+      |phoneCountryCode must contain the country dialling code. For example:
+      |{"phoneNationalNumber":"99123456","phoneCountryCode":"+357"}
+      |{"phoneNationalNumber":"4155550123","phoneCountryCode":"+1"}
+      |Email and phone lists may be empty. Whenever either list is non-empty, mark exactly one entry in that list
+      |with isDefault=true and mark every other entry with isDefault=false. Never send an empty string for an
+      |optional field - omit the field entirely instead.
       |If something about a candidate is missing or unclear (e.g. a smudged phone number, no visible email), say so
       |in one short, plain sentence in that candidate's extraction notes; otherwise leave the notes out entirely.
       |Compare candidates only against each other within this same photo, never against any other data. Two
@@ -170,18 +177,18 @@ object FileService {
     override def extractCustomersFromPhoto(
         organizationID: OrganizationID,
         customerBookPhotoByteStream: ZStream[Any, Throwable, Byte],
-    ): ServiceTask[ExtractCustomersFromPhotoResponse] = ZIO.scoped(for {
+    ): ServiceTask[ExtractCustomersResponse] = ZIO.scoped(for {
       customerBookPhotoScanOutput <- fileScanner.scan(
         customerBookPhotoByteStream,
         SupportedMediaType.images,
         fileServiceConfig.maxUploadBytes,
       )
-      extractCustomersFromPhotoResponse <- aiClient.extractFromImage[ExtractCustomersFromPhotoResponse](
+      extractCustomersResponse <- aiClient.extractFromImage[ExtractCustomersResponse](
         customerBookPhotoScanOutput.fileByteStreamScanned,
         customerBookPhotoScanOutput.supportedMediaType,
         extractCustomersFromPhotoInstructions,
       )
-    } yield extractCustomersFromPhotoResponse)
+    } yield extractCustomersResponse)
   }
 
   def observed(service: FileService[ServiceTask]): FileService[TapirTask] =
@@ -219,7 +226,7 @@ object FileService {
       override def extractCustomersFromPhoto(
           organizationID: OrganizationID,
           customerBookPhotoByteStream: ZStream[Any, Throwable, Byte],
-      ): TapirTask[ExtractCustomersFromPhotoResponse] =
+      ): TapirTask[ExtractCustomersResponse] =
         HttpErrorHandler.errorResponseHandlerTapir(
           service.extractCustomersFromPhoto(organizationID, customerBookPhotoByteStream)
         )
