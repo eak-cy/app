@@ -553,9 +553,10 @@ This step exists to help a business move its existing customer book into this pr
 | 6. The photo has more entries than could be turned into candidates | - The response says how many entries were identified in total and how many were actually turned into candidates, so the user can tell, for example, that 3 of them could not be processed |
 | 7. The photo has nothing recognizable as a customer at all | - An empty result is returned, with both counts at zero - This is not treated as an error |
 | 8. The photo is not a supported image, or is larger than the limit | - Rejected, the same as any other image upload in this product |
-| 9. The AI service cannot be reached, or sends back something that cannot be used | - Reported as a server error |
-| 10. A member with the ordinary user role tries to use this step | - Rejected. This step is limited the same way as adding a customer |
-| 11. User asks for the same photo to be read again | - Reading a photo never stores anything, so this can be repeated freely with no effect on the customer book |
+| 9. The AI service has a temporary connection, reading, timeout, busy or service failure | - The photo is tried again up to two times after the first attempt - If all three attempts fail, the person receives a server error and no candidates |
+| 10. The AI service rejects the request or returns a response that cannot be decoded | - Not retried - Reported as a server error |
+| 11. A member with the ordinary user role tries to use this step | - Rejected. This step is limited the same way as adding a customer |
+| 12. User asks for the same photo to be read again | - Reading a photo never stores anything, so this can be repeated freely with no effect on the customer book |
 
 #### Requirements
 
@@ -567,6 +568,7 @@ This step exists to help a business move its existing customer book into this pr
 6. The photo itself is judged the same way as any other image upload in this product: by looking inside the file, accepting only PNG, JPEG and WEBP, capped at 20 MB.
 7. Unlike the logo and catalogue item image uploads, the photo is never kept. There is no original copy and no resized copy — nothing about it is written to file storage.
 8. Nothing is stored in the customer book by this step, however it turns out. A candidate only becomes a real customer once it is sent through [Adding a customer](#1-user-adds-a-customer).
+9. Each AI attempt may take up to one minute. Temporary connection, reading, timeout, busy and service failures are tried again twice, after waits of one second and two seconds. Request rejections, image-reading failures and responses that cannot be decoded are not retried. If all three attempts fail, the photo read reports a server error and returns no candidates. A retry may send the photo to the outside AI service more than once and may therefore create more than one charge, even when an earlier attempt generated an answer but its response could not be received.
 
 #### Request / Response / Outcome
 
