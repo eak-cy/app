@@ -250,6 +250,82 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
 
         serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
         serviceError.message shouldBe "Unable to send message to AI"
+
+        val extractFromImageRequestMappings =
+          wiremockClient.requestsDetails.zioValue.filter(_.count > 0).sortBy(_.lastCallDate)
+
+        extractFromImageRequestMappings.size shouldBe 3
+        extractFromImageRequestMappings.foreach { extractFromImageRequestMapping =>
+          extractFromImageRequestMapping.mapping.method shouldBe "POST"
+          extractFromImageRequestMapping.mapping.url shouldBe "/v1/chat/completions"
+          extractFromImageRequestMapping.count shouldBe 3
+        }
+      }
+
+      "fail once with an UnexpectedError when the AI service rejects the request" in withContext { context =>
+        import context.*
+
+        val aiClient = ZIO
+          .service[AIClient]
+          .provide(
+            AIClient.live,
+            ZLayer.succeed(aiClientConfig),
+            HttpClientZioBackend.layer(),
+          )
+          .zioValue
+
+        val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
+
+        val serviceError = aiClient
+          .extractFromImage[ExtractedTestResult](imageByteStream, SupportedMediaType.JPEG, "AI_CLIENT_SPEC_BAD_REQUEST")
+          .zioError
+
+        serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
+        serviceError.message shouldBe "Unable to send message to AI"
+
+        val extractFromImageRequestMappings =
+          wiremockClient.requestsDetails.zioValue.filter(_.count > 0).sortBy(_.lastCallDate)
+
+        extractFromImageRequestMappings.size shouldBe 1
+        extractFromImageRequestMappings(0).mapping.method shouldBe "POST"
+        extractFromImageRequestMappings(0).mapping.url shouldBe "/v1/chat/completions"
+        extractFromImageRequestMappings(0).count shouldBe 1
+      }
+
+      "fail after three attempts with an UnexpectedError when the AI connection resets" in withContext { context =>
+        import context.*
+
+        val aiClient = ZIO
+          .service[AIClient]
+          .provide(
+            AIClient.live,
+            ZLayer.succeed(aiClientConfig),
+            HttpClientZioBackend.layer(),
+          )
+          .zioValue
+
+        val imageByteStream = FileByteStreamScanned(ZStream.fromIterable(Array[Byte](1, 2, 3, 4, 5)))
+
+        val serviceError = aiClient
+          .extractFromImage[ExtractedTestResult](
+            imageByteStream,
+            SupportedMediaType.JPEG,
+            "AI_CLIENT_SPEC_CONNECTION_RESET",
+          )
+          .zioError
+
+        serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
+        serviceError.message shouldBe "Unable to send message to AI"
+
+        val extractFromImageRequestMappings =
+          wiremockClient.requestsDetails.zioValue.filter(_.count > 0).sortBy(_.lastCallDate)
+
+        extractFromImageRequestMappings.size shouldBe 3
+        extractFromImageRequestMappings.foreach { extractFromImageRequestMapping =>
+          extractFromImageRequestMapping.mapping.method shouldBe "POST"
+          extractFromImageRequestMapping.mapping.url shouldBe "/v1/chat/completions"
+          extractFromImageRequestMapping.count shouldBe 3
+        }
       }
 
       "fail with an UnexpectedError when the AI service returns undecodable structured-output JSON" in withContext {
@@ -277,6 +353,14 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
 
           serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
           serviceError.message should startWith("Failed to parse AI response")
+
+          val extractFromImageRequestMappings =
+            wiremockClient.requestsDetails.zioValue.filter(_.count > 0).sortBy(_.lastCallDate)
+
+          extractFromImageRequestMappings.size shouldBe 1
+          extractFromImageRequestMappings(0).mapping.method shouldBe "POST"
+          extractFromImageRequestMappings(0).mapping.url shouldBe "/v1/chat/completions"
+          extractFromImageRequestMappings(0).count shouldBe 1
       }
 
       "fail with an UnexpectedError when the AI response violates a refined field constraint" in withContext {
@@ -304,6 +388,14 @@ class AIClientSpec extends ZWordSpecBase, DockerComposeBase {
 
           serviceError shouldBe a[ServiceError.InternalServerError.UnexpectedError]
           serviceError.message should startWith("Failed to parse AI response")
+
+          val extractFromImageRequestMappings =
+            wiremockClient.requestsDetails.zioValue.filter(_.count > 0).sortBy(_.lastCallDate)
+
+          extractFromImageRequestMappings.size shouldBe 1
+          extractFromImageRequestMappings(0).mapping.method shouldBe "POST"
+          extractFromImageRequestMappings(0).mapping.url shouldBe "/v1/chat/completions"
+          extractFromImageRequestMappings(0).count shouldBe 1
       }
     }
   }
